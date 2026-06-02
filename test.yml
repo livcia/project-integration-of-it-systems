@@ -1,0 +1,29 @@
+name: automatic-test
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: ["**"]
+
+jobs:
+  CI-CD-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: ckeckout repo
+        uses: actions/checkout@v4
+      
+      - name: zainstaluj .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: przywracanie zależności
+        run: dotnet restore
+
+      - name: uruchom testy
+        run: dotnet test
+
+      - name: deploy
+        if: github.ref == 'refs/heads/main'
+        run: curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK_URL }}"
