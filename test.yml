@@ -10,7 +10,7 @@ jobs:
   CI-CD-test:
     runs-on: ubuntu-latest
     steps:
-      - name: ckeckout repo
+      - name: checkout repo
         uses: actions/checkout@v4
       
       - name: zainstaluj .NET
@@ -19,11 +19,9 @@ jobs:
           dotnet-version: "10.0.x"
 
       - name: przywracanie zależności
+        working-directory: ./jira
         run: dotnet restore
 
-      - name: uruchom testy
+      - name: uruchomienie testów (Tests)
+        working-directory: ./jira.Tests
         run: dotnet test
-
-      - name: deploy
-        if: github.ref == 'refs/heads/main'
-        run: curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK_URL }}"
