@@ -22,6 +22,11 @@ jobs:
         working-directory: ./jira
         run: dotnet restore
 
+      - name: kompilacja głównego projektu (Build)
+        working-directory: ./jira
+        run: dotnet build
+
       - name: uruchomienie testów (Tests)
         working-directory: ./jira.Tests
         run: dotnet test
+
