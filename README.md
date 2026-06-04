@@ -15,7 +15,7 @@ erDiagram
     TABLICE ||--o{ TABLICE_UZYTKOWNICY : "zawiera"
     TABLICE ||--o{ ZADANIA : "posiada"
     UZYTKOWNICY ||--o{ ZADANIA : "tworzy"
-    UZYTKOWNICY ||--o{ ZADANIA : "przypiszemy"
+    UZYTKOWNICY ||--o{ ZADANIA : "jest przypisany do"
     ZADANIA ||--o{ KOMENTARZE : "ma"
     UZYTKOWNICY ||--o{ KOMENTARZE : "pisze"
 
