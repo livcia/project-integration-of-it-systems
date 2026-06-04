@@ -1,0 +1,32 @@
+name: automatic-test
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: ["**"]
+
+jobs:
+  CI-CD-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout repo
+        uses: actions/checkout@v4
+      
+      - name: zainstaluj .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: przywracanie zależności
+        working-directory: ./jira
+        run: dotnet restore
+
+      - name: kompilacja głównego projektu (Build)
+        working-directory: ./jira
+        run: dotnet build
+
+      - name: uruchomienie testów (Tests)
+        working-directory: ./jira.Tests
+        run: dotnet test
+
