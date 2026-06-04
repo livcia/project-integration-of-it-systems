@@ -1,8 +1,16 @@
-<h3>Status Column</h3>
-
-<div style="border: 2px dashed #666; padding: 10px; margin: 10px; width: 30%;">
-    <h3>Kolumna</h3>
-    
-    <TicketCard />
-    <TicketCard />
+<div class="col-md-3 mb-3">
+    <div class="bg-light p-3 rounded shadow-sm h-100">
+        <h5 class="text-uppercase mb-3 text-muted" style="font-size: 0.9rem; font-weight: 700;">
+            @Title
+        </h5>
+        
+        <div class="d-flex flex-column gap-2">
+            @ChildContent
+        </div>
+    </div>
 </div>
+
+@code {
+    [Parameter] public string Title { get; set; } = "Kolumna";
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}
