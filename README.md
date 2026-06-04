@@ -27,8 +27,8 @@ erDiagram
         string avatar_url
         string github_id
         string google_id
-        string github_token
-        string google_token
+        string github_refresh_token_encrypted
+        string google_refresh_token_encrypted
         timestamp data_rejestracji
     }
 
