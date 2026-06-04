@@ -57,7 +57,7 @@ erDiagram
         int id_uzytkownika_przypisanego FK
         int id_uzytkownika_tworcy_zadania FK
         string priorytet "wysoki, sredni, niski"
-        string status "Todo, In Progress, In Review,Done"
+        string status "Todo, In Progress, In Review, Done"
         timestamp data_zakonczenia
         string kolumna_tablicy "dla Kanban"
     }
