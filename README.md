@@ -22,7 +22,7 @@ erDiagram
     UZYTKOWNICY {
         int id_uzytkownika PK
         string email UK
-        string password
+        string password_hash
         string nazwa_uzytkownika
         string avatar_url
         string github_id
