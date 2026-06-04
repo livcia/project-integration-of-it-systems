@@ -1,0 +1,22 @@
+@page "/projects/new"
+
+<h2>Załóż nową tablicę projektową</h2>
+
+<form>
+    <div class="row">
+        <div class="col-md-3">
+            <div class="mb-3">
+                <label for="name-input">Nazwa Projektu:</label>
+                <input class="form-control" type="text" id="name-input" placeholder="np. Projekt zaliczeniowy" />
+            </div>
+
+            <div class="mb-3">
+                <label for="desc-input">Opis (opcjonalne)</label>
+                <textarea class="form-control" name="desc-input" id="desc-input" rows="3"></textarea>
+            </div>
+            <button type="submit" class="btn btn-success">Utwórz tablicę</button>
+            <a class="btn btn-secondary" href="/projects">Powrót do tablic</a>
+        </div>
+    </div>
+</form>
+
