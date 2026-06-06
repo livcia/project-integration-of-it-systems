@@ -1,9 +1,122 @@
 @page "/board"
+@using jira.Components.UI.StatusColumn
+@using jira.Components.UI.TicketCard
 
-<h2>Widok: Tablica (Board)</h2>
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>Tablica Projektowa</h2>
+    <div>
+        <button type="button" class="btn btn-outline-secondary me-2" data-bs-toggle="modal"
+                data-bs-target="#inviteModal">
+            Zaproś do tablicy
+        </button>
+        <a class="btn btn-primary" href="/ticket/new">+ Dodaj zadanie</a>
+    </div>
+</div>
 
-<div style="display: flex; flex-direction: row;">
-    <StatusColumn />
-    <StatusColumn />
-    <StatusColumn />
+<div class="row align-items-start pb-4">
+
+    <StatusColumn Title="Do zrobienia (To Do)">
+        <TicketCard />
+        <TicketCard />
+    </StatusColumn>
+
+    <StatusColumn Title="W trakcie (In Progress)">
+        <TicketCard />
+    </StatusColumn>
+
+    <StatusColumn Title="W weryfikacji (In Review)">
+        <TicketCard />
+    </StatusColumn>
+
+    <StatusColumn Title="Zakończone (Done)">
+        <TicketCard />
+        <TicketCard />
+        <TicketCard />
+    </StatusColumn>
+
+</div>
+
+
+@* Pop-up ze szczegółami zadania *@
+<div class="modal fade" id="ticketModal" tabindex="-1" aria-labelledby="ticketModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+
+            <div class="modal-header">
+                <h5 class="modal-title" id="ticketModalLabel">Szczegóły zadania</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Zamknij"></button>
+            </div>
+
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-8">
+                        <h6>Opis</h6>
+                        <p class="text-muted">Tutaj znajdzie się pełny, długi opis zadania, który użytkownik wpisał przy
+                            jego tworzeniu. Możemy tu też dodać sekcję komentarzy.</p>
+                        </div>
+                        <div class="col-md-4 border-start">
+                            <h6>Szczegóły</h6>
+
+                            <div class="mb-3">
+                                <label class="small fw-bold form-label mb-1">Status:</label>
+                                <select class="form-select form-select-sm">
+                                    <option value="todo">Do zrobienia</option>
+                                    <option value="inprogress" selected>W trakcie</option>
+                                    <option value="inreview">W weryfikacji</option>
+                                    <option value="done">Zakończone</option>
+                                </select>
+                            </div>
+
+                            <p class="mb-1 small"><strong>Przypisane do:</strong> Jan Kowalski</p>
+                            <p class="mb-1 small"><strong>Priorytet:</strong> Wysoki</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-footer d-flex justify-content-between">
+                    <button type="button" class="btn btn-danger">
+                        <i class="bi bi-trash"></i> Usuń zadanie
+                    </button>
+
+                    <div>
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Zamknij</button>
+                        <a href="/ticket/edit" class="btn btn-primary">Edytuj (symulacja)</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @* Dodanie współpracowników *@
+    <div class="modal fade" id="inviteModal" tabindex="-1" aria-labelledby="inviteModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            
+            <div class="modal-header">
+                <h5 class="modal-title" id="inviteModalLabel">Zaproś do tablicy</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Zamknij"></button>
+            </div>
+            
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label for="collaborator-email" class="form-label">Adres e-mail współpracownika:</label>
+                    <input type="email" class="form-control" id="collaborator-email" placeholder="np. jan.kowalski@firma.pl">
+                </div>
+                <div class="mb-3">
+                    <label for="collaborator-role" class="form-label">Rola w projekcie:</label>
+                    <select class="form-select" id="collaborator-role">
+                        <option value="member" selected>Członek (Edycja)</option>
+                        <option value="viewer">Obserwator (Tylko do odczytu)</option>
+                        <option value="admin">Administrator</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Anuluj</button>
+                <button type="button" class="btn btn-success" data-bs-dismiss="modal">Wyślij zaproszenie</button>
+            </div>
+            
+        </div>
+    </div>
 </div>
