@@ -1,0 +1,63 @@
+@page "/ticket/new"
+
+<h3>Nowe Zadanie</h3>
+
+<form>
+    <div class="row mt-3">
+        <div class="col-md-6">
+            <div class="mb-3">
+                <label for="ticket-name" class="form-label">Nazwa zadania:</label>
+                <input class="form-control" type="text" name="ticket-name" id="ticket-name"
+                       placeholder="Wpisz tytuł zadania...">
+            </div>
+
+            <div class="mb-3">
+                <label for="ticket-desc" class="form-label">Opis zadania:</label>
+                <textarea class="form-control" name="ticket-desc" id="ticket-desc" rows="3"
+                          placeholder="Dodaj szczegóły..."></textarea>
+            </div>
+
+@*             <div class="mb-3">
+                <label for="ticket-status" class="form-label">Status zadania:</label>
+                <select class="form-select" name="ticket-status" id="ticket-status">
+                    <option value="to-do">Do zrobienia</option>
+                    <option value="in-progress">W trakcie</option>
+                    <option value="in-review">W weryfikacji</option>
+                    <option value="done">Zakończone</option>
+                </select>
+            </div> *@
+
+            <div class="mb-3">
+                <label for="ticket-category" class="form-label">Kategoria zadania (Tag):</label>
+                <select class="form-select" name="ticket-category" id="ticket-category">
+                    <option value="">Wybierz kategorię...</option>
+                    <option value="bug">Bug (Błąd)</option>
+                    <option value="feature">Feature (Nowa funkcja)</option>
+                    <option value="ui-ux">UI/UX</option>
+                    <option value="backend">Backend</option>
+                </select>
+            </div>
+
+            <div class="row mb-4">
+                <div class="col">
+                    <label for="ticket-assigned-to" class="form-label">Przypisane do:</label>
+                    <select class="form-select" name="ticket-assigned-to" id="ticket-assigned-to">
+                        <option value="">Wybierz osobę...</option>
+                        @* Tutaj w przyszłości wyświetlimy wszystkich collaborators *@
+                    </select>
+                </div>
+                <div class="col">
+                    <label for="ticket-priority" class="form-label">Priorytet:</label>
+                    <select class="form-select" name="ticket-priority" id="ticket-priority">
+                        <option value="high">Wysoki</option>
+                        <option value="normal" selected>Normalny</option>
+                        <option value="low">Niski</option>
+                    </select>
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary">Dodaj zadanie (symulacja)</button>
+            <a class="btn btn-secondary ms-2" href="/board">Wróć</a>
+        </div>
+    </div>
+</form>
