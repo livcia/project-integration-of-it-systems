@@ -97,7 +97,7 @@ app.UseAntiforgery();
 
 app.MapGet("/api/auth/login", (string provider, HttpContext ctx, [FromQuery] string? returnUrl) =>
 {
-    var redirectUrl = $"/api/auth/callback?provider={provider}&returnUrl={Uri.EscapeDataString(returnUrl ?? "/projects")}";
+    var redirectUrl = $"/api/auth/callback?provider={provider}&returnUrl={Uri.EscapeDataString(returnUrl ?? "/")}";
     var properties = new AuthenticationProperties { RedirectUri = redirectUrl };
     return Results.Challenge(properties, [provider]);
 });
@@ -176,8 +176,8 @@ app.MapGet("/api/auth/callback", async (
             ExpiresUtc = DateTimeOffset.UtcNow.AddDays(7)
         });
 
-    var safe = Uri.UnescapeDataString(returnUrl ?? "/projects");
-    if (!safe.StartsWith('/')) safe = "/projects";
+    var safe = Uri.UnescapeDataString(returnUrl ?? "/");
+    if (!safe.StartsWith('/')) safe = "/";
     return Results.Redirect(safe);
 });
 
