@@ -8,20 +8,19 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
-      - "5432:5432"
-
-  app:
-    build: ./jira
-    depends_on:
-      - db
-    environment:
-      ConnectionStrings__DefaultConnection: "Host=db;Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}"
-      Authentication__Google__ClientId: "${GOOGLE_CLIENT_ID}"
-      Authentication__Google__ClientSecret: "${GOOGLE_CLIENT_SECRET}"
-      Authentication__GitHub__ClientId: "${GITHUB_CLIENT_ID}"
-      Authentication__GitHub__ClientSecret: "${GITHUB_CLIENT_SECRET}"
-    ports:
-      - "6767:6767"
+      - "5433:5432"
+  # app:
+  #   build: ./jira
+  #   depends_on:
+  #     - db
+  #   environment:
+  #     ConnectionStrings__DefaultConnection: "Host=db;Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}"
+  #     Authentication__Google__ClientId: "${GOOGLE_CLIENT_ID}"
+  #     Authentication__Google__ClientSecret: "${GOOGLE_CLIENT_SECRET}"
+  #     Authentication__GitHub__ClientId: "${GITHUB_CLIENT_ID}"
+  #     Authentication__GitHub__ClientSecret: "${GITHUB_CLIENT_SECRET}"
+  #   ports:
+  #     - "6767:6767"
 
 volumes:
   postgres_data:
