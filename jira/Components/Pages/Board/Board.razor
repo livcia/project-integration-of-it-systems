@@ -1,92 +1,159 @@
 @page "/board"
+@page "/board/{BoardId:int}"
 @attribute [Authorize]
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.EntityFrameworkCore
+@using System.Security.Claims
 @using jira.Components.UI.StatusColumn
 @using jira.Components.UI.TicketCard
+@using jira.Data
+@using jira.DbModels
+@using jira.Services
+@inject IServiceScopeFactory ScopeFactory
+@inject AuthenticationStateProvider AuthStateProvider
+@inject NavigationManager NavManager
+@inject BoardStateService BoardState
 
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h2>Tablica Projektowa</h2>
-    <div>
-        <button type="button" class="btn btn-outline-secondary me-2" data-bs-toggle="modal"
-                data-bs-target="#inviteModal">
-            Zaproś do tablicy
-        </button>
-        <a class="btn btn-primary" href="/ticket/new">+ Dodaj zadanie</a>
+@if (isLoading)
+{
+    <div class="board-loading">
+        <span class="board-spinner"></span>
+        <span>Ładowanie tablicy...</span>
     </div>
-</div>
-
-<div class="row align-items-start pb-4">
-
-    <StatusColumn Title="Do zrobienia (To Do)">
-        <TicketCard />
-        <TicketCard />
-    </StatusColumn>
-
-    <StatusColumn Title="W trakcie (In Progress)">
-        <TicketCard />
-    </StatusColumn>
-
-    <StatusColumn Title="W weryfikacji (In Review)">
-        <TicketCard />
-    </StatusColumn>
-
-    <StatusColumn Title="Zakończone (Done)">
-        <TicketCard />
-        <TicketCard />
-        <TicketCard />
-    </StatusColumn>
-
-</div>
-
-
-@* Pop-up ze szczegółami zadania *@
-<div class="modal fade" id="ticketModal" tabindex="-1" aria-labelledby="ticketModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-
-            <div class="modal-header">
-                <h5 class="modal-title" id="ticketModalLabel">Szczegóły zadania</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Zamknij"></button>
+}
+else if (board == null)
+{
+    <div class="board-not-found">
+        <h3>Tablica nie istnieje lub nie masz do niej dostępu.</h3>
+        <a href="/projects" class="board-back-link">← Wróć do tablic</a>
+    </div>
+}
+else
+{
+    <!-- Confirm delete dialog -->
+    @if (showDeleteConfirm)
+    {
+        <div class="board-delete-overlay">
+            <div class="board-delete-dialog">
+                <h4>Usuń tablicę</h4>
+                <p>Czy na pewno chcesz usunąć tablicę <strong>@board.NazwaTablicy</strong>?<br />
+                   Wszystkie zadania zostaną trwale usunięte.</p>
+                <div class="board-delete-actions">
+                    <button class="board-delete-cancel" @onclick="() => showDeleteConfirm = false" disabled="@isDeleting">
+                        Anuluj
+                    </button>
+                    <button class="board-delete-confirm" @onclick="DeleteBoardAsync" disabled="@isDeleting">
+                        @if (isDeleting)
+                        {
+                            <span class="board-delete-spinner"></span>
+                            <span>Usuwanie...</span>
+                        }
+                        else
+                        {
+                            <span>🗑 Tak, usuń</span>
+                        }
+                    </button>
+                </div>
             </div>
+        </div>
+    }
 
-            <div class="modal-body">
-                <div class="row">
-                    <div class="col-md-8">
-                        <h6>Opis</h6>
-                        <p class="text-muted">Tutaj znajdzie się pełny, długi opis zadania, który użytkownik wpisał przy
-                            jego tworzeniu. Możemy tu też dodać sekcję komentarzy.</p>
-                        </div>
-                        <div class="col-md-4 border-start">
-                            <h6>Szczegóły</h6>
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div class="board-title-group">
+            @if (!string.IsNullOrEmpty(board.KolorTablicy))
+            {
+                <span class="board-color-dot" style="background:@board.KolorTablicy;"></span>
+            }
+            <h2 class="board-page-title">@board.NazwaTablicy</h2>
+        </div>
 
-                            <div class="mb-3">
-                                <label class="small fw-bold form-label mb-1">Status:</label>
-                                <select class="form-select form-select-sm">
-                                    <option value="todo">Do zrobienia</option>
-                                    <option value="inprogress" selected>W trakcie</option>
-                                    <option value="inreview">W weryfikacji</option>
-                                    <option value="done">Zakończone</option>
-                                </select>
-                            </div>
+        <div class="d-flex gap-2 align-items-center">
+            @if (canDelete)
+            {
+                <button type="button" class="board-btn-delete" @onclick="() => showDeleteConfirm = true">
+                    🗑 Usuń tablicę
+                </button>
+            }
+            <button type="button" class="btn btn-outline-secondary" data-bs-toggle="modal"
+                    data-bs-target="#inviteModal">
+                Zaproś do tablicy
+            </button>
+            <a class="btn btn-primary" href="/ticket/new">+ Dodaj zadanie</a>
+        </div>
+    </div>
 
-                            <p class="mb-1 small"><strong>Przypisane do:</strong> Jan Kowalski</p>
-                            <p class="mb-1 small"><strong>Priorytet:</strong> Wysoki</p>
-                        </div>
-                    </div>
+    <div class="row align-items-start pb-4">
+
+        <StatusColumn Title="Do zrobienia (To Do)">
+            <TicketCard />
+            <TicketCard />
+        </StatusColumn>
+
+        <StatusColumn Title="W trakcie (In Progress)">
+            <TicketCard />
+        </StatusColumn>
+
+        <StatusColumn Title="W weryfikacji (In Review)">
+            <TicketCard />
+        </StatusColumn>
+
+        <StatusColumn Title="Zakończone (Done)">
+            <TicketCard />
+            <TicketCard />
+            <TicketCard />
+        </StatusColumn>
+
+    </div>
+
+    @* Pop-up ze szczegółami zadania *@
+    <div class="modal fade" id="ticketModal" tabindex="-1" aria-labelledby="ticketModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+
+                <div class="modal-header">
+                    <h5 class="modal-title" id="ticketModalLabel">Szczegóły zadania</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Zamknij"></button>
                 </div>
 
-                <div class="modal-footer d-flex justify-content-between">
-                    <button type="button" class="btn btn-danger">
-                        <i class="bi bi-trash"></i> Usuń zadanie
-                    </button>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-8">
+                            <h6>Opis</h6>
+                            <p class="text-muted">Tutaj znajdzie się pełny, długi opis zadania, który użytkownik wpisał przy
+                                jego tworzeniu. Możemy tu też dodać sekcję komentarzy.</p>
+                            </div>
+                            <div class="col-md-4 border-start">
+                                <h6>Szczegóły</h6>
 
-                    <div>
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Zamknij</button>
-                        <a href="/ticket/edit" class="btn btn-primary">Edytuj (symulacja)</a>
+                                <div class="mb-3">
+                                    <label class="small fw-bold form-label mb-1">Status:</label>
+                                    <select class="form-select form-select-sm">
+                                        <option value="todo">Do zrobienia</option>
+                                        <option value="inprogress" selected>W trakcie</option>
+                                        <option value="inreview">W weryfikacji</option>
+                                        <option value="done">Zakończone</option>
+                                    </select>
+                                </div>
+
+                                <p class="mb-1 small"><strong>Przypisane do:</strong> Jan Kowalski</p>
+                                <p class="mb-1 small"><strong>Priorytet:</strong> Wysoki</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="modal-footer d-flex justify-content-between">
+                        <button type="button" class="btn btn-danger">
+                            <i class="bi bi-trash"></i> Usuń zadanie
+                        </button>
+
+                        <div>
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Zamknij</button>
+                            <a href="/ticket/edit" class="btn btn-primary">Edytuj (symulacja)</a>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
 
     @* Dodanie współpracowników *@
     <div class="modal fade" id="inviteModal" tabindex="-1" aria-labelledby="inviteModalLabel" aria-hidden="true">
@@ -121,3 +188,120 @@
         </div>
     </div>
 </div>
+}
+
+@code {
+    [Parameter]
+    public int? BoardId { get; set; }
+
+    private Tablica? board;
+    private bool isLoading = true;
+    private bool canDelete;
+    private bool showDeleteConfirm;
+    private bool isDeleting;
+    private int currentUserId;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        isLoading = true;
+        showDeleteConfirm = false;
+        board = null;
+        canDelete = false;
+
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        if (user.Identity is not { IsAuthenticated: true })
+        {
+            isLoading = false;
+            return;
+        }
+
+        // Resolve current user id
+        var idClaim = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (int.TryParse(idClaim, out int uid) && uid > 0)
+        {
+            currentUserId = uid;
+        }
+        else
+        {
+            // Fallback: email lookup
+            var email = user.FindFirst(ClaimTypes.Email)?.Value;
+            if (!string.IsNullOrEmpty(email))
+            {
+                using var ls = ScopeFactory.CreateScope();
+                var ldb = ls.ServiceProvider.GetRequiredService<AppDbContext>();
+                var dbUser = await ldb.Uzytkownicy.FirstOrDefaultAsync(u => u.Email == email);
+                currentUserId = dbUser?.IdUzytkownika ?? 0;
+            }
+        }
+
+        if (currentUserId <= 0 || BoardId == null)
+        {
+            isLoading = false;
+            return;
+        }
+
+        using var scope = ScopeFactory.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        // Load board only if user has access (owner or participant)
+        board = await db.Tablice
+            .Include(t => t.TabliceUzyt)
+            .FirstOrDefaultAsync(t =>
+                t.IdTablicy == BoardId &&
+                (t.IdUzytkownikaOwner == currentUserId ||
+                 t.TabliceUzyt.Any(tu => tu.IdUzytkownika == currentUserId)));
+
+        if (board != null)
+        {
+            // Can delete = owner OR has role "admin" in junction table
+            var isOwner = board.IdUzytkownikaOwner == currentUserId;
+            var isAdmin = board.TabliceUzyt
+                .Any(tu => tu.IdUzytkownika == currentUserId &&
+                           tu.Rola.Equals("admin", StringComparison.OrdinalIgnoreCase));
+
+            canDelete = isOwner || isAdmin;
+        }
+
+        isLoading = false;
+    }
+
+    private async Task DeleteBoardAsync()
+    {
+        if (board == null) return;
+        isDeleting = true;
+
+        try
+        {
+            using var scope = ScopeFactory.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+            int boardIdToDelete = board.IdTablicy;
+
+            var toDelete = await db.Tablice
+                .Include(t => t.TabliceUzyt)
+                .Include(t => t.Zadania)
+                .FirstOrDefaultAsync(t =>
+                    t.IdTablicy == boardIdToDelete &&
+                    (t.IdUzytkownikaOwner == currentUserId ||
+                     t.TabliceUzyt.Any(tu =>
+                         tu.IdUzytkownika == currentUserId &&
+                         tu.Rola == "admin")));
+
+            if (toDelete != null)
+            {
+                db.Tablice.Remove(toDelete);
+                await db.SaveChangesAsync();
+
+                await BoardState.NotifyBoardCreatedAsync();
+                NavManager.NavigateTo("/projects");
+            }
+        }
+        catch
+        {
+            showDeleteConfirm = false;
+            isDeleting = false;
+        }
+    }
+}

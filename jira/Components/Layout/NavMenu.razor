@@ -1,0 +1,141 @@
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.EntityFrameworkCore
+@using System.Security.Claims
+@using jira.Data
+@using jira.DbModels
+@using jira.Services
+@implements IAsyncDisposable
+@inject IServiceScopeFactory ScopeFactory
+@inject AuthenticationStateProvider AuthStateProvider
+@inject NavigationManager NavManager
+@inject BoardStateService BoardState
+
+<div class="sidebar">
+    <nav class="nav flex-column">
+        <h5 class="sidebar-heading">Moje Tablice</h5>
+
+        @if (boards == null)
+        {
+            <div class="sidebar-loading">
+                <span class="sidebar-spinner"></span>
+                Ładowanie...
+            </div>
+        }
+        else if (boards.Count == 0)
+        {
+            <div class="sidebar-empty">Brak tablic. Stwórz pierwszą!</div>
+        }
+        else
+        {
+            @foreach (var board in boards)
+            {
+                <a href="/board/@board.IdTablicy"
+                   class="nav-link @GetActiveStatus($"/board/{board.IdTablicy}")"
+                   title="@board.NazwaTablicy">
+                    <span class="nav-link-icon">📋</span>
+                    <span class="nav-link-text">@board.NazwaTablicy</span>
+                </a>
+            }
+        }
+
+        <div class="sidebar-divider"></div>
+
+        <a href="/projects/new" class="nav-link nav-link-new">
+            <span class="nav-link-icon">＋</span>
+            <span class="nav-link-text">Nowa Tablica</span>
+        </a>
+    </nav>
+</div>
+
+@code {
+    private List<Tablica>? boards;
+    private string? currentUrl;
+
+    protected override async Task OnInitializedAsync()
+    {
+        currentUrl = NavManager.ToBaseRelativePath(NavManager.Uri);
+        NavManager.LocationChanged += OnLocationChanged;
+        BoardState.OnBoardCreated += RefreshBoardsAsync;
+
+        await LoadBoardsAsync();
+    }
+
+    private async Task LoadBoardsAsync()
+    {
+        using var scope = ScopeFactory.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        if (user.Identity is not { IsAuthenticated: true })
+        {
+            boards = new List<Tablica>();
+            return;
+        }
+
+        // Try NameIdentifier first (our OAuthHelper stores the DB id here)
+        var userIdString = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+        if (int.TryParse(userIdString, out int userId))
+        {
+            boards = await db.Tablice
+                .Where(t => t.IdUzytkownikaOwner == userId ||
+                            t.TabliceUzyt.Any(tu => tu.IdUzytkownika == userId))
+                .OrderBy(t => t.NazwaTablicy)
+                .ToListAsync();
+        }
+        else
+        {
+            // Fallback: look up user by email claim
+            var email = user.FindFirst(ClaimTypes.Email)?.Value;
+            if (!string.IsNullOrEmpty(email))
+            {
+                var dbUser = await db.Uzytkownicy.FirstOrDefaultAsync(u => u.Email == email);
+                if (dbUser != null)
+                {
+                    boards = await db.Tablice
+                        .Where(t => t.IdUzytkownikaOwner == dbUser.IdUzytkownika ||
+                                    t.TabliceUzyt.Any(tu => tu.IdUzytkownika == dbUser.IdUzytkownika))
+                        .OrderBy(t => t.NazwaTablicy)
+                        .ToListAsync();
+                }
+                else
+                {
+                    boards = new List<Tablica>();
+                }
+            }
+            else
+            {
+                boards = new List<Tablica>();
+            }
+        }
+    }
+
+    private async Task RefreshBoardsAsync()
+    {
+        await LoadBoardsAsync();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void OnLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
+    {
+        currentUrl = NavManager.ToBaseRelativePath(e.Location);
+        InvokeAsync(StateHasChanged);
+    }
+
+    private string GetActiveStatus(string href)
+    {
+        var relativeHref = href.TrimStart('/');
+        return currentUrl != null && currentUrl.Equals(relativeHref, StringComparison.OrdinalIgnoreCase)
+            ? "active"
+            : "";
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        NavManager.LocationChanged -= OnLocationChanged;
+        BoardState.OnBoardCreated -= RefreshBoardsAsync;
+        await Task.CompletedTask;
+    }
+}

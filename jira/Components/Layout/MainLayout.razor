@@ -57,11 +57,19 @@
         </div>
     </header>
 
-    <main class="app-main">
-        <article class="content px-4">
-            @Body
-        </article>
-    </main>
+    <div class="app-body">
+        <AuthorizeView>
+            <Authorized>
+                <NavMenu />
+            </Authorized>
+        </AuthorizeView>
+
+        <main class="app-main">
+            <article class="content px-4">
+                @Body
+            </article>
+        </main>
+    </div>
 </div>
 
 <div id="blazor-error-ui" data-nosnippet>
