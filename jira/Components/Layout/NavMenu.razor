@@ -32,7 +32,8 @@
                 <a href="/board/@board.IdTablicy"
                    class="nav-link @GetActiveStatus($"/board/{board.IdTablicy}")"
                    title="@board.NazwaTablicy">
-                    <span class="nav-link-icon">📋</span>
+                    <span class="nav-board-dot"
+                          style="background-color: @(board.KolorTablicy ?? "#0052CC");"></span>
                     <span class="nav-link-text">@board.NazwaTablicy</span>
                 </a>
             }
