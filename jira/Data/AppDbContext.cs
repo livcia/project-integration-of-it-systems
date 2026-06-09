@@ -32,9 +32,9 @@ public class AppDbContext : DbContext
             .OnDelete(DeleteBehavior.Restrict);
 
         modelBuilder.Entity<Zadanie>()
-            .HasOne(d=>d.UzytkownikPrzypisany)
-            .WithMany(p=>p.ZadaniaPrzypisane)
-            .HasForeignKey(d=>d.IdUzytkownikaPrzypisanego)
+            .HasOne(d => d.UzytkownikPrzypisany)
+            .WithMany(p => p.ZadaniaPrzypisane)
+            .HasForeignKey(d => d.IdUzytkownikaPrzypisanego)
             .OnDelete(DeleteBehavior.SetNull);
     }
 }

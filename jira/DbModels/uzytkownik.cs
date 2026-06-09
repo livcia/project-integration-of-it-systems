@@ -19,9 +19,8 @@ public class Uzytkownik
     [Column("email")]
     public string Email { get; set; } = null!;
 
-    [Required]
     [Column("password_hash")]
-    public string PasswordHash { get; set; } = null!;
+    public string? PasswordHash { get; set; }
 
     [Required]
     [Column("nazwa_uzytkownika")]

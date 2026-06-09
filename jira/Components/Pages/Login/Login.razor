@@ -1,0 +1,141 @@
+@page "/login"
+@layout LoginLayout
+@using System.ComponentModel.DataAnnotations
+@rendermode InteractiveServer
+
+<PageTitle>Zaloguj się – Jira Integration System</PageTitle>
+
+<div class="login-wrapper">
+    <div class="login-card card shadow-sm rounded-4">
+
+        <!-- Logo & Header -->
+        <div class="card-body p-4 p-md-5">
+            <div class="text-center mb-4">
+                <div class="brand-logo mb-3">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40">
+                        <defs>
+                            <linearGradient id="jira-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" style="stop-color:#2684FF;stop-opacity:1" />
+                                <stop offset="100%" style="stop-color:#0052CC;stop-opacity:1" />
+                            </linearGradient>
+                        </defs>
+                        <rect width="40" height="40" rx="8" fill="url(#jira-grad)" />
+                        <path d="M21 8L10 20l11 12 11-12L21 8zM21 14.5l5 5.5-5 5.5-5-5.5 5-5.5z" fill="white" />
+                    </svg>
+                </div>
+                <h1 class="h4 fw-bold text-dark mb-1">Jira Integration System</h1>
+                <p class="text-muted small mb-0">Zaloguj się, aby kontynuować</p>
+            </div>
+
+            <EditForm Model="@_loginModel" OnValidSubmit="HandleLogin" FormName="loginForm">
+                <DataAnnotationsValidator />
+                <ValidationSummary class="alert alert-danger py-2 small" role="alert" />
+
+                <div class="mb-3">
+                    <label for="email" class="form-label fw-medium small">Adres e-mail</label>
+                    <InputText id="email" class="form-control login-input" @bind-Value="_loginModel.Email"
+                               placeholder="you@example.com" autocomplete="email" />
+                    <ValidationMessage For="@(() => _loginModel.Email)" class="text-danger small mt-1" />
+                </div>
+
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <label for="password" class="form-label fw-medium small mb-0">Hasło</label>
+                        <a href="#" class="text-primary small forgot-link">Zapomniałeś hasła?</a>
+                    </div>
+                    <InputText id="password" type="password" class="form-control login-input mt-1"
+                               @bind-Value="_loginModel.Password" placeholder="••••••••" autocomplete="current-password" />
+                    <ValidationMessage For="@(() => _loginModel.Password)" class="text-danger small mt-1" />
+                </div>
+
+                @if (!string.IsNullOrEmpty(_errorMessage))
+                {
+                    <div class="alert alert-danger py-2 small" role="alert">
+                        <i class="bi bi-exclamation-triangle-fill me-1"></i>@_errorMessage
+                    </div>
+                }
+
+                <div class="d-grid mt-4">
+                    <button type="submit" class="btn btn-primary btn-login fw-semibold" disabled="@_isLoading">
+                        @if (_isLoading)
+                        {
+                            <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                            <span>Logowanie...</span>
+                        }
+                        else
+                        {
+                            <span>Zaloguj się</span>
+                        }
+                    </button>
+                </div>
+            </EditForm>
+
+            <!-- Divider -->
+            <div class="divider my-4">
+                <span class="divider-text text-muted small">Lub zaloguj się przez</span>
+            </div>
+
+            <!-- OAuth Buttons -->
+            <div class="d-grid gap-3">
+                <a href="/api/auth/login?provider=Google" id="btn-google-login"
+                   class="btn btn-oauth btn-google d-flex align-items-center justify-content-center gap-2 fw-medium">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 48 48">
+                        <path fill="#4285F4"
+                              d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z" />
+                        <path fill="#34A853"
+                              d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z" />
+                        <path fill="#FBBC05"
+                              d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z" />
+                        <path fill="#EA4335"
+                              d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z" />
+                        <path fill="none" d="M0 0h48v48H0z" />
+                    </svg>
+                    Zaloguj przez Google
+                </a>
+
+                <a href="/api/auth/login?provider=GitHub" id="btn-github-login"
+                   class="btn btn-oauth btn-github d-flex align-items-center justify-content-center gap-2 fw-medium">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+                         fill="currentColor">
+                        <path
+                        d="M12 0C5.37 0 0 5.37 0 12c0 5.3 3.438 9.8 8.205 11.387.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61-.546-1.387-1.333-1.756-1.333-1.756-1.09-.745.083-.73.083-.73 1.205.085 1.84 1.236 1.84 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.418-1.305.762-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.605-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 21.795 24 17.295 24 12c0-6.63-5.37-12-12-12z" />
+                    </svg>
+                    Zaloguj przez GitHub
+                </a>
+            </div>
+
+            <p class="text-center text-muted small mt-4 mb-0">
+                Nie masz konta?
+                <a href="#" class="text-primary fw-medium">Zarejestruj się</a>
+            </p>
+        </div>
+    </div>
+</div>
+
+@code {
+    private readonly LoginModel _loginModel = new();
+    private string? _errorMessage;
+    private bool _isLoading = false;
+
+    private async Task HandleLogin()
+    {
+        _isLoading = true;
+        _errorMessage = null;
+
+        await Task.Delay(500);
+
+        _errorMessage = "Nieprawidłowy e-mail lub hasło.";
+        _isLoading = false;
+    }
+
+    private sealed class LoginModel
+    {
+        [Required(ErrorMessage = "Adres e-mail jest wymagany.")]
+        [EmailAddress(ErrorMessage = "Podaj prawidłowy adres e-mail.")]
+        public string Email { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Hasło jest wymagane.")]
+        [MinLength(6, ErrorMessage = "Hasło musi mieć co najmniej 6 znaków.")]
+        public string Password { get; set; } = string.Empty;
+    }
+}

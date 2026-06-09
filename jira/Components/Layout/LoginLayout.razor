@@ -1,0 +1,24 @@
+@inherits LayoutComponentBase
+@inject IJSRuntime JS
+
+<HeadContent>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+</HeadContent>
+
+@Body
+
+@code {
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await JS.InvokeVoidAsync("eval",
+                "document.body.classList.add('login-page-body');" +
+                "document.body.style.fontFamily = \"'Inter', 'Helvetica Neue', Arial, sans-serif\";"
+            );
+        }
+    }
+}
