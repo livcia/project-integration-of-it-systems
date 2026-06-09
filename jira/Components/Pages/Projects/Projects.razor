@@ -1,12 +1,145 @@
 @page "/"
 @page "/projects"
+@page "/dashboard"
+@using System.Security.Claims
+@using jira.Data
+@using jira.DbModels
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.EntityFrameworkCore
+@inject AppDbContext Db
+@inject AuthenticationStateProvider AuthenticationStateProvider
 
-<div>
-    <h2>Moje Tablice</h2>
-    <a class="btn btn-primary" href="/projects/new">
-    + Dodaj Nową Tablicę
-    </a>
+<div class="dashboard-layout">
+    <aside class="dashboard-sidebar">
+        <h3 class="sidebar-title">Moje Tablice</h3>
 
-    <p>Tu wyświetlą się stworzone tablice...</p>
+        @if (IsLoading)
+        {
+            <p class="sidebar-empty">Ładowanie tablic...</p>
+        }
+        else if (Boards.Count == 0)
+        {
+            <p class="sidebar-empty">Brak dostępnych tablic.</p>
+        }
+        else
+        {
+            <nav class="boards-nav">
+                @foreach (var board in Boards)
+                {
+                    <button type="button"
+                            class="board-link @(SelectedBoardId == board.IdTablicy ? "active" : null)"
+                            @onclick="() => SelectBoard(board.IdTablicy)">
+                        @board.NazwaTablicy
+                    </button>
+                }
+            </nav>
+        }
+    </aside>
 
+    <section class="dashboard-content">
+        @if (SelectedBoard is null)
+        {
+            <h2>Wybierz tablicę</h2>
+            <p class="text-muted mb-0">Aby rozpocząć pracę, wybierz tablicę z lewego panelu.</p>
+        }
+        else
+        {
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2 class="mb-1">@SelectedBoard.NazwaTablicy</h2>
+                    @if (!string.IsNullOrWhiteSpace(SelectedBoard.OpisTablicy))
+                    {
+                        <p class="text-muted mb-0">@SelectedBoard.OpisTablicy</p>
+                    }
+                </div>
+                <div>
+                    <button type="button" class="btn btn-outline-secondary me-2" data-bs-toggle="modal"
+                            data-bs-target="#inviteModal">
+                        Zaproś do tablicy
+                    </button>
+                    <a class="btn btn-primary" href="/ticket/new">+ Dodaj zadanie</a>
+                </div>
+            </div>
+
+            <div class="row align-items-start pb-4">
+                <div class="col-md-6 col-lg-3 mb-3">
+                    <div class="board-column">
+                        <h5>Do zrobienia (To Do)</h5>
+                    </div>
+                </div>
+                <div class="col-md-6 col-lg-3 mb-3">
+                    <div class="board-column">
+                        <h5>W trakcie (In Progress)</h5>
+                    </div>
+                </div>
+                <div class="col-md-6 col-lg-3 mb-3">
+                    <div class="board-column">
+                        <h5>W weryfikacji (In Review)</h5>
+                    </div>
+                </div>
+                <div class="col-md-6 col-lg-3 mb-3">
+                    <div class="board-column">
+                        <h5>Zakończone (Done)</h5>
+                    </div>
+                </div>
+            </div>
+        }
+    </section>
 </div>
+
+@code {
+    private readonly List<Tablica> Boards = [];
+    private bool IsLoading = true;
+    private int? SelectedBoardId;
+    private Tablica? SelectedBoard => Boards.FirstOrDefault(b => b.IdTablicy == SelectedBoardId);
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        if (!(user.Identity?.IsAuthenticated ?? false))
+        {
+            IsLoading = false;
+            return;
+        }
+
+        var userId = ResolveUserId(user);
+        if (userId is null)
+        {
+            IsLoading = false;
+            return;
+        }
+
+        var availableBoards = await BoardAccessFilter.GetAccessibleBoards(Db.Tablice.AsNoTracking(), Db.TabliceUzytkownicy.AsNoTracking(), userId.Value)
+            .OrderBy(t => t.NazwaTablicy)
+            .ToListAsync();
+
+        Boards.AddRange(availableBoards);
+        SelectedBoardId = Boards.FirstOrDefault()?.IdTablicy;
+        IsLoading = false;
+    }
+
+    private void SelectBoard(int boardId) => SelectedBoardId = boardId;
+
+    private int? ResolveUserId(ClaimsPrincipal user)
+    {
+        var idClaim = user.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (int.TryParse(idClaim, out var parsedId))
+        {
+            return parsedId;
+        }
+
+        var email = user.FindFirstValue(ClaimTypes.Email) ?? user.FindFirstValue("email");
+        if (string.IsNullOrWhiteSpace(email))
+        {
+            return null;
+        }
+
+        return Db.Uzytkownicy
+            .AsNoTracking()
+            .Where(u => u.Email == email)
+            .Select(u => (int?)u.IdUzytkownika)
+            .FirstOrDefault();
+    }
+}
