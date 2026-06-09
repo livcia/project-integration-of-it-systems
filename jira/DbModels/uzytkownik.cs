@@ -31,13 +31,13 @@ public class Uzytkownik
     public string? AvatarUrl { get; set; }
 
     [Column("github_id")]
-    public string? GithubId { get; set; }
+    public string? GitHubId { get; set; }
 
     [Column("google_id")]
     public string? GoogleId { get; set; }
 
     [Column("github_refresh_token_encrypted")]
-    public string? GithubRefreshTokenEncrypted { get; set; }
+    public string? GitHubRefreshTokenEncrypted { get; set; }
 
     [Column("google_refresh_token_encrypted")]
     public string? GoogleRefreshTokenEncrypted { get; set; }

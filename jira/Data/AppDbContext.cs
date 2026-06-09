@@ -23,12 +23,18 @@ public class AppDbContext : DbContext
             .HasOne(d => d.Owner)
             .WithMany(p => p.TabliceOwner)
             .HasForeignKey(d => d.IdUzytkownikaOwner)
-            .OnDelete(DeleteBehavior.Restrict);
+            .OnDelete(DeleteBehavior.SetNull);
 
         modelBuilder.Entity<Zadanie>()
             .HasOne(d => d.TworcaZadania)
             .WithMany(p => p.ZadaniaStworzone)
             .HasForeignKey(d => d.IdUzytkownikaTworcyZadania)
             .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<Zadanie>()
+            .HasOne(d=>d.UzytkownikPrzypisany)
+            .WithMany(p=>p.ZadaniaPrzypisane)
+            .HasForeignKey(d=>d.IdUzytkownikaPrzypisanego)
+            .OnDelete(DeleteBehavior.SetNull);
     }
 }

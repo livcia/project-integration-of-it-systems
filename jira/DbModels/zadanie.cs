@@ -23,7 +23,7 @@ public class Zadanie
     public string? OpisZadania { get; set; }
 
     [Column("data_stworzenia", TypeName = "timestamp without time zone")]
-    public DateTime DataStworzenia { get; set; } = DateTime.UtcNow;
+    public DateTime DataStworzenia { get; set; } = DateTime.SpecifyKind(DateTime.UtcNow,DateTimeKind.Unspecified);
 
     [Column("id_uzytkownika_przypisanego")]
     public int? IdUzytkownikaPrzypisanego { get; set; }
