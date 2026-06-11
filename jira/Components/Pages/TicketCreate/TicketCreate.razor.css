@@ -1,0 +1,264 @@
+/* ══════════════════════════════════════════════
+   TicketCreate.razor – scoped styles
+   Wzorowane na ProjectCreate.razor.css
+   ══════════════════════════════════════════════ */
+
+/* Wrapper i karta – identyczne jak create-board-wrapper/card */
+.create-board-wrapper {
+    min-height: calc(100vh - 56px);
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 3rem 1rem 4rem;
+    background: linear-gradient(135deg, #eef2ff 0%, #f8faff 100%);
+}
+
+.create-board-card {
+    background: #ffffff;
+    border-radius: 16px;
+    box-shadow: 0 4px 32px rgba(0, 82, 204, 0.10), 0 1px 4px rgba(0, 0, 0, 0.06);
+    padding: 2.5rem 2.25rem;
+    width: 100%;
+    max-width: 560px;
+    animation: cbSlideUp 0.3s ease;
+}
+
+@@keyframes cbSlideUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Header */
+.create-board-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.create-board-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #172B4D;
+    margin: 0;
+    line-height: 1.2;
+}
+
+.create-board-subtitle {
+    font-size: 0.84rem;
+    color: #6b778c;
+    margin: 0.2rem 0 0;
+}
+
+/* ── Alerty ─────────────────────────────────── */
+.cb-alert-error {
+    background: #fff0ed;
+    border: 1px solid #ff5630;
+    border-radius: 8px;
+    color: #de350b;
+    font-size: 0.875rem;
+    padding: 0.75rem 1rem;
+    margin-bottom: 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.cb-alert-success {
+    background: #e3fcef;
+    border: 1px solid #57d9a3;
+    border-radius: 8px;
+    color: #00664f;
+    font-size: 0.875rem;
+    padding: 0.75rem 1rem;
+    margin-bottom: 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    animation: cbFadeIn 0.25s ease;
+}
+
+@@keyframes cbFadeIn {
+    from { opacity: 0; transform: translateY(-4px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Loading ─────────────────────────────────── */
+.cb-loading {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    padding: 1rem 0 1.5rem;
+    color: #44546f;
+    font-size: 0.9rem;
+}
+
+/* ── Grupy pól ────────────────────────────────── */
+.cb-form-group {
+    margin-bottom: 1.4rem;
+}
+
+.cb-form-label {
+    display: block;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #172b4d;
+    margin-bottom: 0.4rem;
+}
+
+.cb-required {
+    color: #de350b;
+}
+
+.cb-optional {
+    font-weight: 400;
+    color: #6b778c;
+    font-size: 0.78rem;
+}
+
+/* Wiersz dwukolumnowy (priorytet + kolumna) */
+.cb-form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+
+/* ── Inputy ───────────────────────────────────── */
+::deep .cb-input {
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+    padding: 0.6rem 0.9rem;
+    font-size: 0.9rem;
+    font-family: inherit;
+    color: #172b4d;
+    background: #fafbff;
+    border: 1.5px solid #dde1e7;
+    border-radius: 8px;
+    outline: none;
+    transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
+    -webkit-appearance: none;
+    appearance: none;
+}
+
+::deep .cb-input:focus {
+    border-color: #2684ff;
+    box-shadow: 0 0 0 3px rgba(38, 132, 255, 0.15);
+    background: #fff;
+}
+
+::deep .cb-input--error {
+    border-color: #de350b !important;
+    background: #fff8f6;
+}
+
+::deep .cb-textarea {
+    resize: vertical;
+    min-height: 90px;
+}
+
+/* Select — strzałka */
+::deep .cb-select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%236b778c' d='M1 1l5 5 5-5'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.9rem center;
+    background-color: #fafbff;
+    padding-right: 2.2rem;
+    cursor: pointer;
+}
+
+::deep .cb-field-error {
+    color: #de350b;
+    font-size: 0.78rem;
+    margin-top: 0.3rem;
+    display: block;
+}
+
+/* ── Przyciski ────────────────────────────────── */
+.cb-form-actions {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 0.75rem;
+    margin-top: 2rem;
+}
+
+.cb-btn-cancel {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.55rem 1.25rem;
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: #44546f;
+    background: #f4f5f7;
+    border: 1px solid #dde1e7;
+    border-radius: 8px;
+    text-decoration: none;
+    transition: background 0.15s, color 0.15s;
+    cursor: pointer;
+}
+
+.cb-btn-cancel:hover {
+    background: #ebecf0;
+    color: #172b4d;
+}
+
+.cb-btn-submit {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.55rem 1.6rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #fff;
+    background: linear-gradient(135deg, #2684FF 0%, #0052CC 100%);
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: filter 0.15s, transform 0.15s, box-shadow 0.15s;
+    box-shadow: 0 2px 10px rgba(0, 82, 204, 0.32);
+}
+
+.cb-btn-submit:hover:not(:disabled) {
+    filter: brightness(1.08);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 16px rgba(0, 82, 204, 0.38);
+}
+
+.cb-btn-submit:disabled {
+    opacity: 0.65;
+    cursor: not-allowed;
+}
+
+/* ── Spinner ──────────────────────────────────── */
+.cb-spinner {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border: 2px solid rgba(255, 255, 255, 0.35);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: cbSpin 0.65s linear infinite;
+}
+
+/* Spinner ciemny (loading state) */
+.cb-spinner--dark {
+    border-color: #dde1e7;
+    border-top-color: #0052cc;
+    width: 18px;
+    height: 18px;
+}
+
+@@keyframes cbSpin {
+    to { transform: rotate(360deg); }
+}
+
+/* ── Responsive ───────────────────────────────── */
+@@media (max-width: 520px) {
+    .create-board-card { padding: 1.75rem 1.25rem; }
+    .cb-form-row       { grid-template-columns: 1fr; }
+    .cb-form-actions   { flex-direction: column-reverse; align-items: stretch; }
+
+    .cb-btn-submit,
+    .cb-btn-cancel     { justify-content: center; text-align: center; }
+}

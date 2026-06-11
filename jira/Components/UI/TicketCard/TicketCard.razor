@@ -1,10 +1,64 @@
-<div class="card mb-2 shadow-sm border-start border-3" 
-     style="cursor: pointer;" 
-     data-bs-toggle="modal" 
-     data-bs-target="#ticketModal">
-    <div class="card-body p-2">
-        <h6 class="card-title mb-1">Przykładowe zadanie</h6>
-        <p class="card-text small text-muted mb-1">Krótki opis tego, co trzeba zrobić...</p>
-        <span class="badge bg-secondary">TAG</span>
+@using jira.DbModels
+
+<div class="ticket-card @PriorityClass"
+     @onclick="HandleClick"
+     role="button"
+     tabindex="0"
+     @onkeydown="HandleKeyDown"
+     title="@Task.TytulZadania">
+    <div class="ticket-card-header">
+        <span class="ticket-priority-dot" title="Priorytet: @Task.Priorytet"></span>
+        <span class="ticket-id">#@Task.IdZadania</span>
+    </div>
+    <h6 class="ticket-title">@Task.TytulZadania</h6>
+    @if (!string.IsNullOrWhiteSpace(Task.OpisZadania))
+    {
+        <p class="ticket-desc">@Task.OpisZadania</p>
+    }
+    <div class="ticket-footer">
+        <span class="ticket-priority-badge ticket-priority-badge--@Task.Priorytet.ToLower()">@PriorityLabel</span>
+        @if (Task.UzytkownikPrzypisany != null)
+        {
+            <div class="ticket-assignee" title="Przypisane do: @Task.UzytkownikPrzypisany.NazwaUzytkownika"
+                 style="background: @GetAvatarColor(Task.UzytkownikPrzypisany.NazwaUzytkownika)">
+                @Task.UzytkownikPrzypisany.NazwaUzytkownika.Substring(0, 1).ToUpperInvariant()
+            </div>
+        }
     </div>
 </div>
+
+@code {
+    [Parameter, EditorRequired] public Zadanie Task { get; set; } = null!;
+    [Parameter] public EventCallback<Zadanie> OnClick { get; set; }
+
+    private async Task HandleClick() => await OnClick.InvokeAsync(Task);
+
+    private async Task HandleKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" || e.Key == " ")
+            await OnClick.InvokeAsync(Task);
+    }
+
+    private string PriorityClass => Task.Priorytet.ToLower() switch
+    {
+        "wysoki" or "high"   => "ticket-card--high",
+        "niski"  or "low"    => "ticket-card--low",
+        _                    => "ticket-card--medium"
+    };
+
+    private string PriorityLabel => Task.Priorytet.ToLower() switch
+    {
+        "wysoki" or "high"   => "Wysoki",
+        "niski"  or "low"    => "Niski",
+        _                    => "Średni"
+    };
+
+    private static readonly string[] AvatarColors =
+    [
+        "#0052CC", "#00875A", "#FF5630", "#FF8B00",
+        "#6554C0", "#00B8D9", "#172B4D", "#403294"
+    ];
+
+    private static string GetAvatarColor(string name) =>
+        AvatarColors[Math.Abs(name.GetHashCode()) % AvatarColors.Length];
+}

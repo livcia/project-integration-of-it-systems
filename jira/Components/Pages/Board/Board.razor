@@ -84,7 +84,7 @@ else
             }
             @if (canAddTask)
             {
-                <a class="btn btn-primary" href="/ticket/new">+ Dodaj zadanie</a>
+                <a class="btn btn-primary" href="@($"/ticket/new?boardId={board.IdTablicy}")" >+ Dodaj zadanie</a>
             }
         </div>
     </div>
@@ -92,19 +92,32 @@ else
     <!-- ── Kanban columns ── -->
     <div class="row align-items-start pb-4">
         <StatusColumn Title="Do zrobienia (To Do)">
-            <TicketCard />
-            <TicketCard />
+            @foreach (var task in GetTasksByColumn("Todo"))
+            {
+                var t = task;
+                <TicketCard Task="t" OnClick="OpenTicketModal" />
+            }
         </StatusColumn>
         <StatusColumn Title="W trakcie (In Progress)">
-            <TicketCard />
+            @foreach (var task in GetTasksByColumn("In Progress"))
+            {
+                var t = task;
+                <TicketCard Task="t" OnClick="OpenTicketModal" />
+            }
         </StatusColumn>
         <StatusColumn Title="W weryfikacji (In Review)">
-            <TicketCard />
+            @foreach (var task in GetTasksByColumn("In Review"))
+            {
+                var t = task;
+                <TicketCard Task="t" OnClick="OpenTicketModal" />
+            }
         </StatusColumn>
         <StatusColumn Title="Zakończone (Done)">
-            <TicketCard />
-            <TicketCard />
-            <TicketCard />
+            @foreach (var task in GetTasksByColumn("Done"))
+            {
+                var t = task;
+                <TicketCard Task="t" OnClick="OpenTicketModal" />
+            }
         </StatusColumn>
     </div>
 
@@ -322,46 +335,113 @@ else
         </div>
     }
 
-    <!-- ── Ticket detail modal ── -->
-    <div class="modal fade" id="ticketModal" tabindex="-1" aria-labelledby="ticketModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="ticketModalLabel">Szczegóły zadania</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Zamknij"></button>
+    <!-- ── Ticket detail modal (Blazor-driven) ── -->
+    @if (selectedTask != null)
+    {
+        <div class="ticket-modal-overlay" @onclick="CloseTicketModal">
+            <div class="ticket-modal-dialog" @onclick:stopPropagation="true" role="dialog"
+                 aria-modal="true" aria-labelledby="ticketModalTitle">
+
+                <!-- Header -->
+                <div class="ticket-modal-header">
+                    <div class="ticket-modal-title-group">
+                        <span class="ticket-modal-id">#@selectedTask.IdZadania</span>
+                        <h5 id="ticketModalTitle" class="ticket-modal-title">@selectedTask.TytulZadania</h5>
+                    </div>
+                    <button class="ticket-modal-close" @onclick="CloseTicketModal" title="Zamknij">✕</button>
                 </div>
-                <div class="modal-body">
-                    <div class="row">
-                        <div class="col-md-8">
-                            <h6>Opis</h6>
-                            <p class="text-muted">Tutaj znajdzie się pełny opis zadania.</p>
-                        </div>
-                        <div class="col-md-4 border-start">
-                            <h6>Szczegóły</h6>
-                            <div class="mb-3">
-                                <label class="small fw-bold form-label mb-1">Status:</label>
-                                <select class="form-select form-select-sm">
-                                    <option value="todo">Do zrobienia</option>
-                                    <option value="inprogress" selected>W trakcie</option>
-                                    <option value="inreview">W weryfikacji</option>
-                                    <option value="done">Zakończone</option>
+
+                <!-- Body -->
+                <div class="ticket-modal-body">
+                    <!-- Left: description -->
+                    <div class="ticket-modal-left">
+                        <p class="ticket-modal-section-label">Opis</p>
+                        @if (!string.IsNullOrWhiteSpace(selectedTask.OpisZadania))
+                        {
+                            <p class="ticket-modal-desc">@selectedTask.OpisZadania</p>
+                        }
+                        else
+                        {
+                            <p class="ticket-modal-desc ticket-modal-desc--empty">Brak opisu zadania.</p>
+                        }
+                    </div>
+
+                    <!-- Right: metadata -->
+                    <div class="ticket-modal-right">
+                        <p class="ticket-modal-section-label">Szczegóły</p>
+
+                        <div class="ticket-modal-field">
+                            <label class="ticket-modal-field-label">Status</label>
+                            @if (isSavingStatus)
+                            {
+                                <span class="ticket-modal-saving">Zapisywanie...</span>
+                            }
+                            else if (canAddTask)
+                            {
+                                <select class="ticket-modal-select" value="@selectedTask.KolumnaTablicy"
+                                        @onchange="ChangeTaskStatus">
+                                    <option value="Todo">Do zrobienia</option>
+                                    <option value="In Progress">W trakcie</option>
+                                    <option value="In Review">W weryfikacji</option>
+                                    <option value="Done">Zakończone</option>
                                 </select>
-                            </div>
-                            <p class="mb-1 small"><strong>Przypisane do:</strong> Jan Kowalski</p>
-                            <p class="mb-1 small"><strong>Priorytet:</strong> Wysoki</p>
+                            }
+                            else
+                            {
+                                <span class="ticket-modal-assignee">@StatusLabel(selectedTask.KolumnaTablicy)</span>
+                            }
                         </div>
+
+                        <div class="ticket-modal-field">
+                            <label class="ticket-modal-field-label">Priorytet</label>
+                            <span class="ticket-priority-badge ticket-priority-badge--@selectedTask.Priorytet.ToLower()">@PriorityDisplayLabel(selectedTask.Priorytet)</span>
+                        </div>
+
+                        <div class="ticket-modal-field">
+                            <label class="ticket-modal-field-label">Przypisane do</label>
+                            @if (selectedTask.UzytkownikPrzypisany != null)
+                            {
+                                <span class="ticket-modal-assignee">@selectedTask.UzytkownikPrzypisany.NazwaUzytkownika</span>
+                            }
+                            else
+                            {
+                                <span class="ticket-modal-assignee ticket-modal-assignee--none">Nieprzypisane</span>
+                            }
+                        </div>
+
+                        <div class="ticket-modal-field">
+                            <label class="ticket-modal-field-label">Data stworzenia</label>
+                            <span class="ticket-modal-assignee">@selectedTask.DataStworzenia.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</span>
+                        </div>
+
+                        @if (!string.IsNullOrEmpty(taskModalError))
+                        {
+                            <div class="ticket-modal-error">⚠️ @taskModalError</div>
+                        }
                     </div>
                 </div>
-                <div class="modal-footer d-flex justify-content-between">
-                    <button type="button" class="btn btn-danger">🗑 Usuń zadanie</button>
-                    <div>
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Zamknij</button>
-                        <a href="/ticket/edit" class="btn btn-primary">Edytuj</a>
-                    </div>
+
+                <!-- Footer -->
+                <div class="ticket-modal-footer">
+                    @if (canAddTask)
+                    {
+                        <button class="ticket-modal-btn-delete" @onclick="DeleteTaskAsync"
+                                disabled="@isDeletingTask">
+                            @if (isDeletingTask)
+                            {
+                                <span>Usuwanie...</span>
+                            }
+                            else
+                            {
+                                <span>🗑 Usuń zadanie</span>
+                            }
+                        </button>
+                    }
+                    <button class="ticket-modal-btn-close" @onclick="CloseTicketModal">Zamknij</button>
                 </div>
             </div>
         </div>
-    </div>
+    }
 }
 
 @code {
@@ -376,6 +456,12 @@ else
     private bool canAddTask;     // owner OR admin OR member (NOT viewer)
     private bool showDeleteConfirm;
     private bool isDeleting;
+
+    // ── Ticket modal state ─────────────────────────
+    private Zadanie? selectedTask;
+    private bool isSavingStatus;
+    private bool isDeletingTask;
+    private string? taskModalError;
     private int currentUserId;
     private List<object> displayedMembers = new(); // mixed: owner entry + TablicaUzytkownik entries
 
@@ -447,9 +533,11 @@ else
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
         board = await db.Tablice
-            .Include(t => t.Owner)               // load owner user data
+            .Include(t => t.Owner)
             .Include(t => t.TabliceUzyt)
                 .ThenInclude(tu => tu.Uzytkownik)
+            .Include(t => t.Zadania)
+                .ThenInclude(z => z.UzytkownikPrzypisany)
             .FirstOrDefaultAsync(t =>
                 t.IdTablicy == BoardId &&
                 (t.IdUzytkownikaOwner == currentUserId ||
@@ -617,6 +705,107 @@ else
         finally
         {
             isInviteSaving = false;
+        }
+    }
+
+    // ── Task helpers ────────────────────────────────
+    private IEnumerable<Zadanie> GetTasksByColumn(string columnName) =>
+        board?.Zadania?.Where(z =>
+            string.Equals(z.KolumnaTablicy, columnName, StringComparison.OrdinalIgnoreCase))
+        ?? Enumerable.Empty<Zadanie>();
+
+    private static string PriorityDisplayLabel(string priorytet) => priorytet.ToLower() switch
+    {
+        "wysoki" or "high"   => "Wysoki",
+        "niski"  or "low"    => "Niski",
+        _                    => "Średni"
+    };
+
+    private static string StatusLabel(string kolumna) => kolumna switch
+    {
+        "In Progress" => "W trakcie",
+        "In Review"   => "W weryfikacji",
+        "Done"        => "Zakończone",
+        _             => "Do zrobienia"
+    };
+
+    // ── Ticket modal ────────────────────────────────
+    private void OpenTicketModal(Zadanie task)
+    {
+        selectedTask   = task;
+        taskModalError = null;
+    }
+
+    private void CloseTicketModal()
+    {
+        selectedTask   = null;
+        taskModalError = null;
+    }
+
+    private async Task ChangeTaskStatus(ChangeEventArgs e)
+    {
+        if (selectedTask == null || board == null) return;
+
+        var newColumn = e.Value?.ToString() ?? selectedTask.KolumnaTablicy;
+        isSavingStatus = true;
+        taskModalError = null;
+
+        try
+        {
+            using var scope = ScopeFactory.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+            var dbTask = await db.Zadania.FindAsync(selectedTask.IdZadania);
+            if (dbTask != null)
+            {
+                dbTask.KolumnaTablicy = newColumn;
+                dbTask.Status         = newColumn;
+                await db.SaveChangesAsync();
+
+                // Update in-memory
+                selectedTask.KolumnaTablicy = newColumn;
+                selectedTask.Status         = newColumn;
+            }
+        }
+        catch (Exception ex)
+        {
+            taskModalError = $"Błąd zapisu: {ex.Message}";
+        }
+        finally
+        {
+            isSavingStatus = false;
+        }
+    }
+
+    private async Task DeleteTaskAsync()
+    {
+        if (selectedTask == null || board == null) return;
+
+        isDeletingTask = true;
+        taskModalError = null;
+
+        try
+        {
+            using var scope = ScopeFactory.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+            var dbTask = await db.Zadania.FindAsync(selectedTask.IdZadania);
+            if (dbTask != null)
+            {
+                db.Zadania.Remove(dbTask);
+                await db.SaveChangesAsync();
+
+                // Remove from in-memory collection
+                var taskList = board.Zadania as ICollection<Zadanie>;
+                taskList?.Remove(selectedTask);
+            }
+
+            CloseTicketModal();
+        }
+        catch (Exception ex)
+        {
+            taskModalError = $"Błąd usuwania: {ex.Message}";
+            isDeletingTask = false;
         }
     }
 
