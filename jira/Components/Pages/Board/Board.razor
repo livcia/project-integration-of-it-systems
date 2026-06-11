@@ -1,63 +1,343 @@
 @page "/board"
+@page "/board/{BoardId:int}"
 @attribute [Authorize]
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.EntityFrameworkCore
+@using System.Security.Claims
 @using jira.Components.UI.StatusColumn
 @using jira.Components.UI.TicketCard
+@using jira.Data
+@using jira.DbModels
+@using jira.Services
+@implements IAsyncDisposable
+@inject IServiceScopeFactory ScopeFactory
+@inject AuthenticationStateProvider AuthStateProvider
+@inject NavigationManager NavManager
+@inject BoardStateService BoardState
 
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h2>Tablica Projektowa</h2>
-    <div>
-        <button type="button" class="btn btn-outline-secondary me-2" data-bs-toggle="modal"
-                data-bs-target="#inviteModal">
-            Zaproś do tablicy
-        </button>
-        <a class="btn btn-primary" href="/ticket/new">+ Dodaj zadanie</a>
+@if (isLoading)
+{
+    <div class="board-loading">
+        <span class="board-spinner"></span>
+        <span>Ładowanie tablicy...</span>
     </div>
-</div>
-
-<div class="row align-items-start pb-4">
-
-    <StatusColumn Title="Do zrobienia (To Do)">
-        <TicketCard />
-        <TicketCard />
-    </StatusColumn>
-
-    <StatusColumn Title="W trakcie (In Progress)">
-        <TicketCard />
-    </StatusColumn>
-
-    <StatusColumn Title="W weryfikacji (In Review)">
-        <TicketCard />
-    </StatusColumn>
-
-    <StatusColumn Title="Zakończone (Done)">
-        <TicketCard />
-        <TicketCard />
-        <TicketCard />
-    </StatusColumn>
-
-</div>
-
-
-@* Pop-up ze szczegółami zadania *@
-<div class="modal fade" id="ticketModal" tabindex="-1" aria-labelledby="ticketModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-
-            <div class="modal-header">
-                <h5 class="modal-title" id="ticketModalLabel">Szczegóły zadania</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Zamknij"></button>
+}
+else if (board == null)
+{
+    <div class="board-not-found">
+        <h3>Tablica nie istnieje lub nie masz do niej dostępu.</h3>
+        <a href="/projects" class="board-back-link">← Wróć do tablic</a>
+    </div>
+}
+else
+{
+    <!-- ── Confirm delete overlay ── -->
+    @if (showDeleteConfirm)
+    {
+        <div class="board-delete-overlay">
+            <div class="board-delete-dialog">
+                <h4>Usuń tablicę</h4>
+                <p>Czy na pewno chcesz usunąć tablicę <strong>@board.NazwaTablicy</strong>?<br />
+                   Wszystkie zadania zostaną trwale usunięte.</p>
+                <div class="board-delete-actions">
+                    <button class="board-delete-cancel" @onclick="() => showDeleteConfirm = false" disabled="@isDeleting">
+                        Anuluj
+                    </button>
+                    <button class="board-delete-confirm" @onclick="DeleteBoardAsync" disabled="@isDeleting">
+                        @if (isDeleting)
+                        {
+                            <span class="board-delete-spinner"></span>
+                            <span>Usuwanie...</span>
+                        }
+                        else
+                        {
+                            <span>🗑 Tak, usuń</span>
+                        }
+                    </button>
+                </div>
             </div>
+        </div>
+    }
 
-            <div class="modal-body">
-                <div class="row">
-                    <div class="col-md-8">
-                        <h6>Opis</h6>
-                        <p class="text-muted">Tutaj znajdzie się pełny, długi opis zadania, który użytkownik wpisał przy
-                            jego tworzeniu. Możemy tu też dodać sekcję komentarzy.</p>
+    <!-- ── Board header ── -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div class="board-title-group">
+            @if (!string.IsNullOrEmpty(board.KolorTablicy))
+            {
+                <span class="board-color-dot" style="background:@board.KolorTablicy;"></span>
+            }
+            <h2 class="board-page-title">@board.NazwaTablicy</h2>
+        </div>
+
+        <div class="d-flex gap-2 align-items-center">
+            @if (canDelete)
+            {
+                <button type="button" class="board-btn-delete" @onclick="() => showDeleteConfirm = true">
+                    🗑 Usuń tablicę
+                </button>
+            }
+            @if (canInvite)
+            {
+                <button type="button" class="btn btn-outline-secondary" @onclick="OpenInvitePanel">
+                    👥 Zaproś do tablicy
+                </button>
+            }
+            @if (canAddTask)
+            {
+                <a class="btn btn-primary" href="/ticket/new">+ Dodaj zadanie</a>
+            }
+        </div>
+    </div>
+
+    <!-- ── Kanban columns ── -->
+    <div class="row align-items-start pb-4">
+        <StatusColumn Title="Do zrobienia (To Do)">
+            <TicketCard />
+            <TicketCard />
+        </StatusColumn>
+        <StatusColumn Title="W trakcie (In Progress)">
+            <TicketCard />
+        </StatusColumn>
+        <StatusColumn Title="W weryfikacji (In Review)">
+            <TicketCard />
+        </StatusColumn>
+        <StatusColumn Title="Zakończone (Done)">
+            <TicketCard />
+            <TicketCard />
+            <TicketCard />
+        </StatusColumn>
+    </div>
+
+    <!-- ── Invite panel (slide-in) ── -->
+    @if (showInvitePanel)
+    {
+        <div class="invite-overlay" @onclick="CloseInvitePanel">
+            <div class="invite-panel" @onclick:stopPropagation="true">
+                <div class="invite-panel-header">
+                    <h5>👥 Zaproś do tablicy</h5>
+                    <button class="invite-panel-close" @onclick="CloseInvitePanel" title="Zamknij">✕</button>
+                </div>
+
+                <!-- Search -->
+                <div class="invite-search-wrap">
+                    <span class="invite-search-icon">🔍</span>
+                    <input class="invite-search-input"
+                           type="text"
+                           placeholder="Szukaj po nazwie lub e-mailu..."
+                           value="@inviteSearchQuery"
+                           @oninput="OnInviteSearchInput"
+                           autocomplete="off"
+                           id="invite-search-input" />
+                    @if (isInviteSearching)
+                    {
+                        <span class="invite-search-spinner"></span>
+                    }
+                </div>
+
+                <!-- Search results dropdown -->
+                @if (inviteSearchResults.Count > 0 && inviteSelectedUser == null)
+                {
+                    <ul class="invite-results">
+                        @foreach (var u in inviteSearchResults)
+                        {
+                            var usr = u;
+                            <li class="invite-result-item" @onclick="() => SelectInviteUser(usr)">
+                                <div class="invite-result-avatar" style="background: @GetAvatarColor(usr.NazwaUzytkownika)">
+                                    @if (!string.IsNullOrEmpty(usr.AvatarUrl))
+                                    {
+                                        <img src="@usr.AvatarUrl" alt="@usr.NazwaUzytkownika" class="invite-result-avatar-img" />
+                                    }
+                                    else
+                                    {
+                                        @usr.NazwaUzytkownika.Substring(0, 1).ToUpperInvariant()
+                                    }
+                                </div>
+                                <div class="invite-result-info">
+                                    <span class="invite-result-name">@usr.NazwaUzytkownika</span>
+                                    <span class="invite-result-email">@usr.Email</span>
+                                </div>
+                            </li>
+                        }
+                    </ul>
+                }
+                else if (!string.IsNullOrEmpty(inviteSearchQuery) && inviteSearchQuery.Length >= 2
+                         && inviteSearchResults.Count == 0 && !isInviteSearching && inviteSelectedUser == null)
+                {
+                    <div class="invite-no-results">Brak użytkowników pasujących do „@inviteSearchQuery"</div>
+                }
+
+                <!-- Selected user card -->
+                @if (inviteSelectedUser != null)
+                {
+                    <div class="invite-selected-card">
+                        <div class="invite-result-avatar invite-selected-avatar"
+                             style="background: @GetAvatarColor(inviteSelectedUser.NazwaUzytkownika)">
+                            @if (!string.IsNullOrEmpty(inviteSelectedUser.AvatarUrl))
+                            {
+                                <img src="@inviteSelectedUser.AvatarUrl" alt="@inviteSelectedUser.NazwaUzytkownika" class="invite-result-avatar-img" />
+                            }
+                            else
+                            {
+                                @inviteSelectedUser.NazwaUzytkownika.Substring(0, 1).ToUpperInvariant()
+                            }
+                        </div>
+                        <div class="invite-selected-info">
+                            <strong>@inviteSelectedUser.NazwaUzytkownika</strong>
+                            <span>@inviteSelectedUser.Email</span>
+                        </div>
+                        <button class="invite-deselect" @onclick="ClearInviteSelection" title="Zmień">✕</button>
+                    </div>
+
+                    <div class="invite-role-wrap">
+                        <label class="invite-role-label">Rola w tablicy</label>
+                        <div class="invite-role-options">
+                            <label class="@(inviteSelectedRole == "member" ? "invite-role-option invite-role-option--active" : "invite-role-option")">
+                                <input type="radio" name="invite-role" value="member"
+                                       checked="@(inviteSelectedRole == "member")"
+                                       @onchange="SetRoleMember" />
+                                <span class="invite-role-icon">✏️</span>
+                                <span>
+                                    <strong>Członek</strong>
+                                    <small>Może edytować zadania</small>
+                                </span>
+                            </label>
+                            <label class="@(inviteSelectedRole == "viewer" ? "invite-role-option invite-role-option--active" : "invite-role-option")">
+                                <input type="radio" name="invite-role" value="viewer"
+                                       checked="@(inviteSelectedRole == "viewer")"
+                                       @onchange="SetRoleViewer" />
+                                <span class="invite-role-icon">👁</span>
+                                <span>
+                                    <strong>Obserwator</strong>
+                                    <small>Tylko do odczytu</small>
+                                </span>
+                            </label>
+                            <label class="@(inviteSelectedRole == "admin" ? "invite-role-option invite-role-option--active" : "invite-role-option")">
+                                <input type="radio" name="invite-role" value="admin"
+                                       checked="@(inviteSelectedRole == "admin")"
+                                       @onchange="SetRoleAdmin" />
+                                <span class="invite-role-icon">🛡</span>
+                                <span>
+                                    <strong>Administrator</strong>
+                                    <small>Pełny dostęp</small>
+                                </span>
+                            </label>
+                        </div>
+                    </div>
+                }
+
+                <!-- Feedback messages -->
+                @if (!string.IsNullOrEmpty(inviteSuccessMsg))
+                {
+                    <div class="invite-success">✅ @inviteSuccessMsg</div>
+                }
+                @if (!string.IsNullOrEmpty(inviteErrorMsg))
+                {
+                    <div class="invite-error">⚠️ @inviteErrorMsg</div>
+                }
+
+                <!-- Members already in board -->
+                @if (board != null)
+                {
+                    <div class="invite-members-section">
+                        <p class="invite-members-title">Obecni członkowie</p>
+                        <ul class="invite-members-list">
+
+                            <!-- Owner always shown first -->
+                            @if (board.Owner != null)
+                            {
+                                <li class="invite-member-item">
+                                    <div class="invite-result-avatar invite-member-avatar"
+                                         style="background: @GetAvatarColor(board.Owner.NazwaUzytkownika)">
+                                        @if (!string.IsNullOrEmpty(board.Owner.AvatarUrl))
+                                        {
+                                            <img src="@board.Owner.AvatarUrl" alt="" class="invite-result-avatar-img" />
+                                        }
+                                        else
+                                        {
+                                            @board.Owner.NazwaUzytkownika.Substring(0, 1).ToUpperInvariant()
+                                        }
+                                    </div>
+                                    <div class="invite-member-info">
+                                        <span>
+                                            @board.Owner.NazwaUzytkownika
+                                            @if (board.IdUzytkownikaOwner == currentUserId)
+                                            {
+                                                <span class="invite-member-you"> (Ty)</span>
+                                            }
+                                        </span>
+                                        <span class="invite-member-role invite-member-role--owner">Właściciel</span>
+                                    </div>
+                                </li>
+                            }
+
+                            <!-- Participants from TABLICE_UZYTKOWNICY -->
+                            @foreach (var m in boardMembers)
+                            {
+                                <li class="invite-member-item">
+                                    <div class="invite-result-avatar invite-member-avatar"
+                                         style="background: @GetAvatarColor(m.Uzytkownik?.NazwaUzytkownika ?? "?")">
+                                        @if (!string.IsNullOrEmpty(m.Uzytkownik?.AvatarUrl))
+                                        {
+                                            <img src="@m.Uzytkownik.AvatarUrl" alt="" class="invite-result-avatar-img" />
+                                        }
+                                        else
+                                        {
+                                            @((m.Uzytkownik?.NazwaUzytkownika ?? "?").Substring(0, 1).ToUpperInvariant())
+                                        }
+                                    </div>
+                                    <div class="invite-member-info">
+                                        <span>
+                                            @(m.Uzytkownik?.NazwaUzytkownika ?? "—")
+                                            @if (m.IdUzytkownika == currentUserId)
+                                            {
+                                                <span class="invite-member-you"> (Ty)</span>
+                                            }
+                                        </span>
+                                        <span class="invite-member-role invite-member-role--@m.Rola">@RoleLabel(m.Rola)</span>
+                                    </div>
+                                </li>
+                            }
+
+                        </ul>
+                    </div>
+                }
+
+                <!-- Action button -->
+                <div class="invite-panel-footer">
+                    <button class="invite-btn-add"
+                            disabled="@(inviteSelectedUser == null || isInviteSaving)"
+                            @onclick="AddUserToBoardAsync">
+                        @if (isInviteSaving)
+                        {
+                            <span class="invite-btn-spinner"></span>
+                            <span>Dodawanie...</span>
+                        }
+                        else
+                        {
+                            <span>✓ Dodaj do tablicy</span>
+                        }
+                    </button>
+                </div>
+            </div>
+        </div>
+    }
+
+    <!-- ── Ticket detail modal ── -->
+    <div class="modal fade" id="ticketModal" tabindex="-1" aria-labelledby="ticketModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="ticketModalLabel">Szczegóły zadania</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Zamknij"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-8">
+                            <h6>Opis</h6>
+                            <p class="text-muted">Tutaj znajdzie się pełny opis zadania.</p>
                         </div>
                         <div class="col-md-4 border-start">
                             <h6>Szczegóły</h6>
-
                             <div class="mb-3">
                                 <label class="small fw-bold form-label mb-1">Status:</label>
                                 <select class="form-select form-select-sm">
@@ -67,57 +347,321 @@
                                     <option value="done">Zakończone</option>
                                 </select>
                             </div>
-
                             <p class="mb-1 small"><strong>Przypisane do:</strong> Jan Kowalski</p>
                             <p class="mb-1 small"><strong>Priorytet:</strong> Wysoki</p>
                         </div>
                     </div>
                 </div>
-
                 <div class="modal-footer d-flex justify-content-between">
-                    <button type="button" class="btn btn-danger">
-                        <i class="bi bi-trash"></i> Usuń zadanie
-                    </button>
-
+                    <button type="button" class="btn btn-danger">🗑 Usuń zadanie</button>
                     <div>
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Zamknij</button>
-                        <a href="/ticket/edit" class="btn btn-primary">Edytuj (symulacja)</a>
+                        <a href="/ticket/edit" class="btn btn-primary">Edytuj</a>
                     </div>
                 </div>
             </div>
         </div>
     </div>
+}
 
-    @* Dodanie współpracowników *@
-    <div class="modal fade" id="inviteModal" tabindex="-1" aria-labelledby="inviteModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            
-            <div class="modal-header">
-                <h5 class="modal-title" id="inviteModalLabel">Zaproś do tablicy</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Zamknij"></button>
-            </div>
-            
-            <div class="modal-body">
-                <div class="mb-3">
-                    <label for="collaborator-email" class="form-label">Adres e-mail współpracownika:</label>
-                    <input type="email" class="form-control" id="collaborator-email" placeholder="np. jan.kowalski@firma.pl">
-                </div>
-                <div class="mb-3">
-                    <label for="collaborator-role" class="form-label">Rola w projekcie:</label>
-                    <select class="form-select" id="collaborator-role">
-                        <option value="member" selected>Członek (Edycja)</option>
-                        <option value="viewer">Obserwator (Tylko do odczytu)</option>
-                        <option value="admin">Administrator</option>
-                    </select>
-                </div>
-            </div>
-            
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Anuluj</button>
-                <button type="button" class="btn btn-success" data-bs-dismiss="modal">Wyślij zaproszenie</button>
-            </div>
-            
-        </div>
-    </div>
-</div>
+@code {
+    // ── Route param ────────────────────────────────
+    [Parameter] public int? BoardId { get; set; }
+
+    // ── Board state ────────────────────────────────
+    private Tablica? board;
+    private bool isLoading = true;
+    private bool canDelete;
+    private bool canInvite;      // owner OR admin
+    private bool canAddTask;     // owner OR admin OR member (NOT viewer)
+    private bool showDeleteConfirm;
+    private bool isDeleting;
+    private int currentUserId;
+    private List<object> displayedMembers = new(); // mixed: owner entry + TablicaUzytkownik entries
+
+    // ── Invite panel state ────────────────────────
+    private bool showInvitePanel;
+    private string inviteSearchQuery = "";
+    private List<Uzytkownik> inviteSearchResults = new();
+    private Uzytkownik? inviteSelectedUser;
+    private string inviteSelectedRole = "member";
+    private bool isInviteSearching;
+    private bool isInviteSaving;
+    private string? inviteSuccessMsg;
+    private string? inviteErrorMsg;
+    private List<TablicaUzytkownik> boardMembers = new();
+    private System.Threading.Timer? _debounceTimer;
+
+    // ── Avatar palette ─────────────────────────────
+    private static readonly string[] AvatarColors =
+    [
+        "#0052CC", "#00875A", "#FF5630", "#FF8B00",
+        "#6554C0", "#00B8D9", "#172B4D", "#403294"
+    ];
+
+    private static string GetAvatarColor(string name) =>
+        AvatarColors[Math.Abs(name.GetHashCode()) % AvatarColors.Length];
+
+    private static string RoleLabel(string rola) => rola switch
+    {
+        "owner"  => "Właściciel",
+        "admin"  => "Administrator",
+        "viewer" => "Obserwator",
+        _        => "Członek"
+    };
+
+    // ── Lifecycle ──────────────────────────────────
+    protected override async Task OnParametersSetAsync()
+    {
+        isLoading = true;
+        showDeleteConfirm = false;
+        showInvitePanel = false;
+        board = null;
+        canDelete = false;
+        canInvite = false;
+        displayedMembers = new();
+
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+        if (user.Identity is not { IsAuthenticated: true }) { isLoading = false; return; }
+
+        var idClaim = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (int.TryParse(idClaim, out int uid) && uid > 0)
+        {
+            currentUserId = uid;
+        }
+        else
+        {
+            var email = user.FindFirst(ClaimTypes.Email)?.Value;
+            if (!string.IsNullOrEmpty(email))
+            {
+                using var ls = ScopeFactory.CreateScope();
+                var ldb = ls.ServiceProvider.GetRequiredService<AppDbContext>();
+                currentUserId = (await ldb.Uzytkownicy.FirstOrDefaultAsync(u => u.Email == email))?.IdUzytkownika ?? 0;
+            }
+        }
+
+        if (currentUserId <= 0 || BoardId == null) { isLoading = false; return; }
+
+        using var scope = ScopeFactory.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        board = await db.Tablice
+            .Include(t => t.Owner)               // load owner user data
+            .Include(t => t.TabliceUzyt)
+                .ThenInclude(tu => tu.Uzytkownik)
+            .FirstOrDefaultAsync(t =>
+                t.IdTablicy == BoardId &&
+                (t.IdUzytkownikaOwner == currentUserId ||
+                 t.TabliceUzyt.Any(tu => tu.IdUzytkownika == currentUserId)));
+
+        if (board != null)
+        {
+            var isOwner = board.IdUzytkownikaOwner == currentUserId;
+            var isAdmin = board.TabliceUzyt
+                .Any(tu => tu.IdUzytkownika == currentUserId && tu.Rola == "admin");
+
+            canDelete  = isOwner || isAdmin;
+            canInvite  = isOwner || isAdmin;
+            canAddTask = isOwner || isAdmin ||
+                         board.TabliceUzyt.Any(tu =>
+                             tu.IdUzytkownika == currentUserId &&
+                             tu.Rola == "member");
+            // viewer => canAddTask stays false
+
+            boardMembers = board.TabliceUzyt.ToList();
+        }
+
+        isLoading = false;
+    }
+
+    // ── Invite panel ───────────────────────────────
+    private void OpenInvitePanel()
+    {
+        inviteSearchQuery = "";
+        inviteSearchResults = new();
+        inviteSelectedUser = null;
+        inviteSelectedRole = "member";
+        inviteSuccessMsg = null;
+        inviteErrorMsg = null;
+        showInvitePanel = true;
+    }
+
+    private void CloseInvitePanel()
+    {
+        showInvitePanel = false;
+        _debounceTimer?.Dispose();
+    }
+
+    private void OnInviteSearchInput(ChangeEventArgs e)
+    {
+        inviteSearchQuery = e.Value?.ToString() ?? "";
+        inviteSelectedUser = null;
+        inviteErrorMsg = null;
+        inviteSuccessMsg = null;
+        inviteSearchResults = new();
+
+        _debounceTimer?.Dispose();
+
+        if (inviteSearchQuery.Length < 2)
+            return;
+
+        _debounceTimer = new System.Threading.Timer(async _ =>
+        {
+            await SearchUsersAsync(inviteSearchQuery);
+        }, null, 300, System.Threading.Timeout.Infinite);
+    }
+
+    private async Task SearchUsersAsync(string query)
+    {
+        isInviteSearching = true;
+        await InvokeAsync(StateHasChanged);
+
+        try
+        {
+            // Already-in-board ids to exclude
+            var excludeIds = boardMembers.Select(m => m.IdUzytkownika).ToHashSet();
+            excludeIds.Add(board!.IdUzytkownikaOwner);
+
+            using var scope = ScopeFactory.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+            // PostgreSQL ILIKE — case-insensitive substring search on name AND email
+            var pattern = $"%{query.Replace("%", "\\%").Replace("_", "\\_")}%";
+
+            inviteSearchResults = await db.Uzytkownicy
+                .Where(u =>
+                    !excludeIds.Contains(u.IdUzytkownika) &&
+                    (EF.Functions.ILike(u.NazwaUzytkownika, pattern) ||
+                     EF.Functions.ILike(u.Email, pattern)))
+                .OrderBy(u => u.NazwaUzytkownika)
+                .Take(8)
+                .ToListAsync();
+        }
+        catch
+        {
+            inviteSearchResults = new();
+        }
+        finally
+        {
+            isInviteSearching = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private void SelectInviteUser(Uzytkownik user)
+    {
+        inviteSelectedUser = user;
+        inviteSearchQuery = user.NazwaUzytkownika;
+        inviteSearchResults = new();
+        inviteErrorMsg = null;
+        inviteSuccessMsg = null;
+    }
+
+    private void ClearInviteSelection()
+    {
+        inviteSelectedUser = null;
+        inviteSearchQuery = "";
+        inviteSearchResults = new();
+    }
+
+    private void SetRoleMember(ChangeEventArgs _) => inviteSelectedRole = "member";
+    private void SetRoleViewer(ChangeEventArgs _) => inviteSelectedRole = "viewer";
+    private void SetRoleAdmin(ChangeEventArgs _)  => inviteSelectedRole = "admin";
+
+    private async Task AddUserToBoardAsync()
+    {
+        if (inviteSelectedUser == null || board == null) return;
+
+        isInviteSaving = true;
+        inviteErrorMsg = null;
+        inviteSuccessMsg = null;
+
+        try
+        {
+            using var scope = ScopeFactory.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+            var alreadyExists = await db.TabliceUzytkownicy
+                .AnyAsync(tu => tu.IdTablicy == board.IdTablicy &&
+                                tu.IdUzytkownika == inviteSelectedUser.IdUzytkownika);
+
+            if (alreadyExists)
+            {
+                inviteErrorMsg = $"{inviteSelectedUser.NazwaUzytkownika} jest już członkiem tej tablicy.";
+                return;
+            }
+
+            var entry = new TablicaUzytkownik
+            {
+                IdTablicy      = board.IdTablicy,
+                IdUzytkownika  = inviteSelectedUser.IdUzytkownika,
+                Rola           = inviteSelectedRole,
+                DataDolaczenia = DateTime.UtcNow,
+            };
+
+            db.TabliceUzytkownicy.Add(entry);
+            await db.SaveChangesAsync();
+
+            // Load the full nav property for the members list display
+            entry.Uzytkownik = inviteSelectedUser;
+            boardMembers.Add(entry);
+
+            inviteSuccessMsg = $"✅ {inviteSelectedUser.NazwaUzytkownika} został dodany jako {RoleLabel(inviteSelectedRole)}.";
+            ClearInviteSelection();
+        }
+        catch (Exception ex)
+        {
+            inviteErrorMsg = $"Błąd: {ex.Message}";
+        }
+        finally
+        {
+            isInviteSaving = false;
+        }
+    }
+
+    // ── Delete board ───────────────────────────────
+    private async Task DeleteBoardAsync()
+    {
+        if (board == null) return;
+        isDeleting = true;
+
+        try
+        {
+            using var scope = ScopeFactory.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+            int boardIdToDelete = board.IdTablicy;
+
+            var toDelete = await db.Tablice
+                .Include(t => t.TabliceUzyt)
+                .Include(t => t.Zadania)
+                .FirstOrDefaultAsync(t =>
+                    t.IdTablicy == boardIdToDelete &&
+                    (t.IdUzytkownikaOwner == currentUserId ||
+                     t.TabliceUzyt.Any(tu =>
+                         tu.IdUzytkownika == currentUserId &&
+                         tu.Rola == "admin")));
+
+            if (toDelete != null)
+            {
+                db.Tablice.Remove(toDelete);
+                await db.SaveChangesAsync();
+                await BoardState.NotifyBoardCreatedAsync();
+                NavManager.NavigateTo("/projects");
+            }
+        }
+        catch
+        {
+            showDeleteConfirm = false;
+            isDeleting = false;
+        }
+    }
+
+    // ── Cleanup ────────────────────────────────────
+    public async ValueTask DisposeAsync()
+    {
+        _debounceTimer?.Dispose();
+        await Task.CompletedTask;
+    }
+}

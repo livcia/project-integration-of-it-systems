@@ -2,6 +2,7 @@ using DotNetEnv;
 using jira;
 using jira.Components;
 using jira.Data;
+using jira.Services;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.Google;
@@ -71,6 +72,8 @@ builder.Services
     });
 
 builder.Services.AddAuthorization();
+
+builder.Services.AddScoped<BoardStateService>();
 
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();

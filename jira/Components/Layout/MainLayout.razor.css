@@ -142,8 +142,15 @@
     min-height: 100vh;
 }
 
+.app-body {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+}
+
 .app-main {
     flex: 1;
+    overflow-y: auto;
     padding-top: 1.5rem;
 }
 

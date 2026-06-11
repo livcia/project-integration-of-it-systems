@@ -1,23 +1,203 @@
 @page "/projects/new"
 @attribute [Authorize]
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.EntityFrameworkCore
+@using System.Security.Claims
+@using jira.Data
+@using jira.DbModels
+@using jira.Services
+@inject IServiceScopeFactory ScopeFactory
+@inject AuthenticationStateProvider AuthStateProvider
+@inject NavigationManager NavManager
+@inject BoardStateService BoardState
 
-<h2>Załóż nową tablicę projektową</h2>
+<div class="create-board-wrapper">
+    <div class="create-board-card">
 
-<form>
-    <div class="row">
-        <div class="col-md-3">
-            <div class="mb-3">
-                <label for="name-input">Nazwa Projektu:</label>
-                <input class="form-control" type="text" id="name-input" placeholder="np. Projekt zaliczeniowy" />
+        <div class="create-board-header">
+            <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 40 40">
+                <defs>
+                    <linearGradient id="cb-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" style="stop-color:#2684FF;stop-opacity:1" />
+                        <stop offset="100%" style="stop-color:#0052CC;stop-opacity:1" />
+                    </linearGradient>
+                </defs>
+                <rect width="40" height="40" rx="10" fill="url(#cb-grad)" />
+                <path d="M21 8L10 20l11 12 11-12L21 8zM21 14.5l5 5.5-5 5.5-5-5.5 5-5.5z" fill="white" />
+            </svg>
+            <div>
+                <h1 class="create-board-title">Nowa Tablica</h1>
+                <p class="create-board-subtitle">Stwórz przestrzeń do zarządzania zadaniami</p>
             </div>
-
-            <div class="mb-3">
-                <label for="desc-input">Opis (opcjonalne)</label>
-                <textarea class="form-control" name="desc-input" id="desc-input" rows="3"></textarea>
-            </div>
-            <button type="submit" class="btn btn-success">Utwórz tablicę</button>
-            <a class="btn btn-secondary" href="/projects">Powrót do tablic</a>
         </div>
-    </div>
-</form>
 
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <div class="cb-alert-error">
+                <span>⚠️</span> @errorMessage
+            </div>
+        }
+
+        <EditForm Model="model" OnValidSubmit="HandleSubmitAsync">
+            <DataAnnotationsValidator />
+
+            <div class="cb-form-group">
+                <label class="cb-form-label" for="board-name">
+                    Nazwa tablicy <span class="cb-required">*</span>
+                </label>
+                <InputText id="board-name"
+                           class="cb-input"
+                           @bind-Value="model.NazwaTablicy"
+                           placeholder="np. Projekt zaliczeniowy" />
+                <ValidationMessage For="() => model.NazwaTablicy" class="cb-field-error" />
+            </div>
+
+            <div class="cb-form-group">
+                <label class="cb-form-label" for="board-desc">
+                    Opis <span class="cb-optional">(opcjonalne)</span>
+                </label>
+                <InputTextArea id="board-desc"
+                               class="cb-input cb-textarea"
+                               @bind-Value="model.OpisTablicy"
+                               placeholder="Krótki opis celu tej tablicy..." />
+            </div>
+
+            <div class="cb-form-group">
+                <label class="cb-form-label">Kolor tablicy</label>
+                <div class="cb-color-picker">
+                    @foreach (var color in availableColors)
+                    {
+                        var c = color; // capture loop variable
+                        <button type="button"
+                                class="@GetSwatchClass(c)"
+                                style="background-color: @c;"
+                                title="@c"
+                                @onclick="() => SelectColor(c)">
+                        </button>
+                    }
+                </div>
+                <p class="cb-color-preview-text">
+                    Wybrany kolor: <span style="display:inline-block;width:14px;height:14px;border-radius:3px;background:@model.KolorTablicy;vertical-align:middle;margin-right:4px;"></span>
+                    <strong>@model.KolorTablicy</strong>
+                </p>
+            </div>
+
+            <div class="cb-form-actions">
+                <a href="/projects" class="cb-btn-cancel">Anuluj</a>
+                <button type="submit" class="cb-btn-submit" disabled="@isSaving">
+                    @if (isSaving)
+                    {
+                        <span class="cb-spinner"></span>
+                        <span>Tworzenie...</span>
+                    }
+                    else
+                    {
+                        <span>✓ Utwórz tablicę</span>
+                    }
+                </button>
+            </div>
+        </EditForm>
+    </div>
+</div>
+
+@code {
+    private BoardFormModel model = new();
+    private bool isSaving;
+    private string? errorMessage;
+
+    private static readonly string[] availableColors =
+    [
+        "#0052CC", "#00875A", "#FF5630", "#FF8B00",
+        "#6554C0", "#00B8D9", "#172B4D", "#403294"
+    ];
+
+    private void SelectColor(string color)
+    {
+        model.KolorTablicy = color;
+        // StateHasChanged is called automatically by Blazor after event handlers
+    }
+
+    private string GetSwatchClass(string color) =>
+        model.KolorTablicy == color
+            ? "cb-color-swatch cb-color-swatch--selected"
+            : "cb-color-swatch";
+
+    private class BoardFormModel
+    {
+        [System.ComponentModel.DataAnnotations.Required(ErrorMessage = "Nazwa tablicy jest wymagana.")]
+        [System.ComponentModel.DataAnnotations.StringLength(120, MinimumLength = 2,
+            ErrorMessage = "Nazwa musi mieć od 2 do 120 znaków.")]
+        public string NazwaTablicy { get; set; } = string.Empty;
+
+        public string? OpisTablicy { get; set; }
+
+        public string KolorTablicy { get; set; } = "#0052CC";
+    }
+
+    private async Task HandleSubmitAsync()
+    {
+        isSaving = true;
+        errorMessage = null;
+
+        try
+        {
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            var user = authState.User;
+
+            if (user.Identity is not { IsAuthenticated: true })
+            {
+                errorMessage = "Musisz być zalogowany, aby stworzyć tablicę.";
+                return;
+            }
+
+            int ownerId = 0;
+
+            var idClaim = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (!int.TryParse(idClaim, out ownerId) || ownerId <= 0)
+            {
+                var email = user.FindFirst(ClaimTypes.Email)?.Value;
+                if (string.IsNullOrEmpty(email))
+                {
+                    errorMessage = "Nie można ustalić tożsamości użytkownika.";
+                    return;
+                }
+
+                using var lookupScope = ScopeFactory.CreateScope();
+                var lookupDb = lookupScope.ServiceProvider.GetRequiredService<AppDbContext>();
+                var dbUser = await lookupDb.Uzytkownicy.FirstOrDefaultAsync(u => u.Email == email);
+                if (dbUser is null)
+                {
+                    errorMessage = "Użytkownik nie istnieje w bazie danych.";
+                    return;
+                }
+                ownerId = dbUser.IdUzytkownika;
+            }
+
+            using var scope = ScopeFactory.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+            var newBoard = new Tablica
+            {
+                NazwaTablicy      = model.NazwaTablicy.Trim(),
+                OpisTablicy       = string.IsNullOrWhiteSpace(model.OpisTablicy) ? null : model.OpisTablicy.Trim(),
+                KolorTablicy      = model.KolorTablicy,
+                IdUzytkownikaOwner = ownerId,
+                DataStworzenia    = DateTime.UtcNow,
+            };
+
+            db.Tablice.Add(newBoard);
+            await db.SaveChangesAsync();
+
+            await BoardState.NotifyBoardCreatedAsync();
+            NavManager.NavigateTo($"/board/{newBoard.IdTablicy}");
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Wystąpił błąd podczas tworzenia tablicy: {ex.Message}";
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+}
