@@ -16,7 +16,31 @@
     height: 100%;           /* fills the flex row height (set on parent) */
     box-shadow: 0 1px 4px rgba(9, 30, 66, 0.06);
     border: 1px solid #dde1e7;
+    transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
 }
+
+/* Highlighted drop zone */
+.kanban-col-inner--drag-over {
+    background: #e8f0fe;
+    border-color: #2684ff;
+    box-shadow: 0 0 0 2px rgba(38, 132, 255, 0.25), 0 2px 8px rgba(9, 30, 66, 0.1);
+}
+
+/* Animated placeholder shown inside the drop zone */
+.kanban-drop-placeholder {
+    height: 60px;
+    border: 2px dashed #2684ff;
+    border-radius: 8px;
+    background: rgba(38, 132, 255, 0.06);
+    margin-top: 0.5rem;
+    animation: placeholderPulse 1s ease-in-out infinite;
+}
+
+@keyframes placeholderPulse {
+    0%, 100% { opacity: 0.6; }
+    50%       { opacity: 1;   }
+}
+
 
 /* Column title */
 .kanban-col-title {
