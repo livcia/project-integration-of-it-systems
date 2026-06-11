@@ -91,32 +91,40 @@ else
 
     <!-- ── Kanban columns ── -->
     <div class="kanban-board">
-        <StatusColumn Title="Do zrobienia (To Do)">
+        <StatusColumn Title="Do zrobienia (To Do)" ColumnKey="Todo" OnDrop="HandleDrop">
             @foreach (var task in GetTasksByColumn("Todo"))
             {
                 var t = task;
-                <TicketCard Task="t" OnClick="OpenTicketModal" />
+                <TicketCard Task="t" OnClick="OpenTicketModal"
+                            OnDragStart="SetDraggedTask"
+                            OnDragEnd="ClearDraggedTask" />
             }
         </StatusColumn>
-        <StatusColumn Title="W trakcie (In Progress)">
+        <StatusColumn Title="W trakcie (In Progress)" ColumnKey="In Progress" OnDrop="HandleDrop">
             @foreach (var task in GetTasksByColumn("In Progress"))
             {
                 var t = task;
-                <TicketCard Task="t" OnClick="OpenTicketModal" />
+                <TicketCard Task="t" OnClick="OpenTicketModal"
+                            OnDragStart="SetDraggedTask"
+                            OnDragEnd="ClearDraggedTask" />
             }
         </StatusColumn>
-        <StatusColumn Title="W weryfikacji (In Review)">
+        <StatusColumn Title="W weryfikacji (In Review)" ColumnKey="In Review" OnDrop="HandleDrop">
             @foreach (var task in GetTasksByColumn("In Review"))
             {
                 var t = task;
-                <TicketCard Task="t" OnClick="OpenTicketModal" />
+                <TicketCard Task="t" OnClick="OpenTicketModal"
+                            OnDragStart="SetDraggedTask"
+                            OnDragEnd="ClearDraggedTask" />
             }
         </StatusColumn>
-        <StatusColumn Title="Zakończone (Done)">
+        <StatusColumn Title="Zakończone (Done)" ColumnKey="Done" OnDrop="HandleDrop">
             @foreach (var task in GetTasksByColumn("Done"))
             {
                 var t = task;
-                <TicketCard Task="t" OnClick="OpenTicketModal" />
+                <TicketCard Task="t" OnClick="OpenTicketModal"
+                            OnDragStart="SetDraggedTask"
+                            OnDragEnd="ClearDraggedTask" />
             }
         </StatusColumn>
     </div>
@@ -463,6 +471,50 @@ else
     private bool isDeletingTask;
     private string? taskModalError;
     private int currentUserId;
+
+    // ── Drag & drop state ──────────────────────────
+    private Zadanie? draggedTask;
+
+    private void SetDraggedTask(Zadanie task) => draggedTask = task;
+    private void ClearDraggedTask() => draggedTask = null;
+
+    private async Task HandleDrop(string targetColumn)
+    {
+        if (draggedTask == null || board == null) return;
+        if (string.Equals(draggedTask.KolumnaTablicy, targetColumn, StringComparison.OrdinalIgnoreCase))
+        {
+            draggedTask = null;
+            return;
+        }
+
+        var taskToMove = draggedTask;
+        draggedTask = null;
+
+        // Optimistic UI update
+        taskToMove.KolumnaTablicy = targetColumn;
+        taskToMove.Status         = targetColumn;
+
+        try
+        {
+            using var scope = ScopeFactory.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+            var dbTask = await db.Zadania.FindAsync(taskToMove.IdZadania);
+            if (dbTask != null)
+            {
+                dbTask.KolumnaTablicy = targetColumn;
+                dbTask.Status         = targetColumn;
+                await db.SaveChangesAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            // Rollback optimistic update – reload board
+            taskModalError = $"Błąd przenoszenia zadania: {ex.Message}";
+            await OnParametersSetAsync();
+        }
+    }
+
     private List<object> displayedMembers = new(); // mixed: owner entry + TablicaUzytkownik entries
 
     // ── Invite panel state ────────────────────────
