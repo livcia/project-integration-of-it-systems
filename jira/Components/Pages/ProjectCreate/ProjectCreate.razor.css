@@ -1,9 +1,3 @@
-/* =====================================================
-   ProjectCreate – scoped styles (cb- prefix)
-   ::deep used so styles reach Blazor InputText/InputTextArea
-   which render as plain <input>/<textarea> elements
-   ===================================================== */
-
 .create-board-wrapper {
     min-height: calc(100vh - 56px);
     display: flex;
@@ -16,7 +10,7 @@
 .create-board-card {
     background: #ffffff;
     border-radius: 16px;
-    box-shadow: 0 4px 32px rgba(0, 82, 204, 0.10), 0 1px 4px rgba(0,0,0,0.06);
+    box-shadow: 0 4px 32px rgba(0, 82, 204, 0.10), 0 1px 4px rgba(0, 0, 0, 0.06);
     padding: 2.5rem 2.25rem;
     width: 100%;
     max-width: 540px;
@@ -24,8 +18,15 @@
 }
 
 @@keyframes cbSlideUp {
-    from { opacity: 0; transform: translateY(16px); }
-    to   { opacity: 1; transform: translateY(0); }
+    from {
+        opacity: 0;
+        transform: translateY(16px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 .create-board-header {
@@ -63,7 +64,6 @@
     gap: 0.5rem;
 }
 
-/* ── Form group ─────────────────────────────────────── */
 .cb-form-group {
     margin-bottom: 1.4rem;
 }
@@ -86,7 +86,6 @@
     font-size: 0.78rem;
 }
 
-/* ── Inputs  (::deep targets the rendered <input>/<textarea>) */
 ::deep .cb-input {
     display: block;
     width: 100%;
@@ -115,7 +114,6 @@
     min-height: 90px;
 }
 
-/* ── Validation message ─────────────────────────────── */
 ::deep .cb-field-error {
     color: #de350b;
     font-size: 0.78rem;
@@ -123,7 +121,6 @@
     display: block;
 }
 
-/* ── Color picker ───────────────────────────────────── */
 .cb-color-picker {
     display: flex;
     gap: 0.75rem;
@@ -161,7 +158,6 @@
     margin-bottom: 0;
 }
 
-/* ── Actions ────────────────────────────────────────── */
 .cb-form-actions {
     display: flex;
     justify-content: flex-end;
@@ -217,7 +213,6 @@
     cursor: not-allowed;
 }
 
-/* ── Loading spinner inside button ──────────────────── */
 .cb-spinner {
     display: inline-block;
     width: 14px;
@@ -229,5 +224,7 @@
 }
 
 @@keyframes cbSpin {
-    to { transform: rotate(360deg); }
+    to {
+        transform: rotate(360deg);
+    }
 }
