@@ -38,6 +38,21 @@
     font-weight: 500;
 }
 
+/* ── Kanban board container ──────────────────── */
+/*
+   Height: viewport minus the approx top area (navbar + board header + padding).
+   Adjust the subtracted value (here 160px) to match your layout's actual offset.
+*/
+.kanban-board {
+    display: flex;
+    gap: 0.9rem;
+    align-items: stretch;       /* all columns same height */
+    height: calc(100vh - 160px);
+    min-height: 300px;
+    padding-bottom: 0.5rem;
+    overflow-x: auto;           /* horizontal scroll when window is very narrow */
+}
+
 /* ── Title bar ───────────────────────────────── */
 .board-title-group {
     display: flex;

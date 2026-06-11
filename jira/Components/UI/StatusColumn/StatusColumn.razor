@@ -1,11 +1,13 @@
-<div class="col-md-3 mb-3">
-    <div class="bg-light p-3 rounded shadow-sm h-100">
-        <h5 class="text-uppercase mb-3 text-muted" style="font-size: 0.9rem; font-weight: 700;">
+<div class="kanban-col">
+    <div class="kanban-col-inner">
+        <h5 class="kanban-col-title">
             @Title
         </h5>
-        
-        <div class="d-flex flex-column gap-2">
-            @ChildContent
+
+        <div class="kanban-col-scroll">
+            <div class="kanban-col-cards">
+                @ChildContent
+            </div>
         </div>
     </div>
 </div>
