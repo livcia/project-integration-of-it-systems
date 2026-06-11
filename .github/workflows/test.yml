@@ -26,7 +26,14 @@ jobs:
         working-directory: ./jira
         run: dotnet build
 
-      - name: uruchomienie testów (Tests)
+      - name: uruchomienie testów (Tests) + coverage
         working-directory: ./jira.Tests
-        run: dotnet test
+        run: dotnet test --collect:"XPlat Code Coverage" --results-directory ./wynikitestu
+
+      - name: pobranie coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: |
+            ./jira.Tests/wynikitestu/**/coverage.cobertura.xml
 
