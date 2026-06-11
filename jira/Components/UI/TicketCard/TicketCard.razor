@@ -11,21 +11,29 @@
      title="@Task.TytulZadania">
     <div class="ticket-card-header">
         <span class="ticket-priority-dot" title="Priorytet: @Task.Priorytet"></span>
-        <span class="ticket-id">#@Task.IdZadania</span>
+        <span class="ticket-id">#@DisplayId</span>
         <span class="ticket-drag-handle" title="Przeciągnij">⠿</span>
     </div>
     <h6 class="ticket-title">@Task.TytulZadania</h6>
-    @if (!string.IsNullOrWhiteSpace(Task.OpisZadania))
-    {
-        <p class="ticket-desc">@Task.OpisZadania</p>
-    }
     <div class="ticket-footer">
-        <span class="ticket-priority-badge ticket-priority-badge--@Task.Priorytet.ToLower()">@PriorityLabel</span>
+        <div class="ticket-footer-left">
+            <span class="ticket-priority-badge ticket-priority-badge--@Task.Priorytet.ToLower()">@PriorityLabel</span>
+            <span class="ticket-age" title="@Task.DataStworzenia.ToLocalTime().ToString("dd.MM.yyyy HH:mm")">@RelativeAge</span>
+        </div>
         @if (Task.UzytkownikPrzypisany != null)
         {
             <div class="ticket-assignee" title="Przypisane do: @Task.UzytkownikPrzypisany.NazwaUzytkownika"
                  style="background: @GetAvatarColor(Task.UzytkownikPrzypisany.NazwaUzytkownika)">
-                @Task.UzytkownikPrzypisany.NazwaUzytkownika.Substring(0, 1).ToUpperInvariant()
+                @if (!string.IsNullOrEmpty(Task.UzytkownikPrzypisany.AvatarUrl))
+                {
+                    <img src="@Task.UzytkownikPrzypisany.AvatarUrl"
+                         alt="@Task.UzytkownikPrzypisany.NazwaUzytkownika"
+                         class="ticket-assignee-img" />
+                }
+                else
+                {
+                    @Task.UzytkownikPrzypisany.NazwaUzytkownika.Substring(0, 1).ToUpperInvariant()
+                }
             </div>
         }
     </div>
@@ -57,6 +65,37 @@
     {
         if (e.Key == "Enter" || e.Key == " ")
             await OnClick.InvokeAsync(Task);
+    }
+
+    // Deterministyczny wielocyfrowy ID oparty na prawdziwym ID zadania
+    // Daje liczby 6-cyfrowe, np. 184523, 290041 — stabilne dla tego samego ticketu
+    private string DisplayId
+    {
+        get
+        {
+            // Seed bazuje na IdZadania — zawsze deterministyczny
+            var seed = Task.IdZadania * 131071 + 47;
+            var pseudo = (seed ^ (seed >> 16)) * 0x45d9f3b;
+            pseudo = (pseudo ^ (pseudo >> 16)) * 0x45d9f3b;
+            pseudo = pseudo ^ (pseudo >> 16);
+            var display = Math.Abs(pseudo) % 900_000 + 100_000; // 100000–999999
+            return display.ToString();
+        }
+    }
+
+    private string RelativeAge
+    {
+        get
+        {
+            var age = DateTime.UtcNow - Task.DataStworzenia;
+            if (age.TotalMinutes < 1)   return "teraz";
+            if (age.TotalMinutes < 60)  return $"{(int)age.TotalMinutes}m";
+            if (age.TotalHours   < 24)  return $"{(int)age.TotalHours}h";
+            if (age.TotalDays    < 14)  return $"{(int)age.TotalDays}d";
+            if (age.TotalDays    < 60)  return $"{(int)(age.TotalDays / 7)}tyg";
+            if (age.TotalDays    < 365) return $"{(int)(age.TotalDays / 30)}mies";
+            return $"{(int)(age.TotalDays / 365)}l";
+        }
     }
 
     private string PriorityClass => Task.Priorytet.ToLower() switch

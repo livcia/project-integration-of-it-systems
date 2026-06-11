@@ -353,7 +353,7 @@ else
                 <!-- Header -->
                 <div class="ticket-modal-header">
                     <div class="ticket-modal-title-group">
-                        <span class="ticket-modal-id">#@selectedTask.IdZadania</span>
+                        <span class="ticket-modal-id">#@GetDisplayId(selectedTask.IdZadania)</span>
                         <h5 id="ticketModalTitle" class="ticket-modal-title">@selectedTask.TytulZadania</h5>
                     </div>
                     <button class="ticket-modal-close" @onclick="CloseTicketModal" title="Zamknij">✕</button>
@@ -407,13 +407,111 @@ else
 
                         <div class="ticket-modal-field">
                             <label class="ticket-modal-field-label">Przypisane do</label>
-                            @if (selectedTask.UzytkownikPrzypisany != null)
+
+                            @if (!canAddTask)
                             {
-                                <span class="ticket-modal-assignee">@selectedTask.UzytkownikPrzypisany.NazwaUzytkownika</span>
+                                @if (selectedTask.UzytkownikPrzypisany != null)
+                                {
+                                    <span class="ticket-modal-assignee">@selectedTask.UzytkownikPrzypisany.NazwaUzytkownika</span>
+                                }
+                                else
+                                {
+                                    <span class="ticket-modal-assignee ticket-modal-assignee--none">Nieprzypisane</span>
+                                }
                             }
                             else
                             {
-                                <span class="ticket-modal-assignee ticket-modal-assignee--none">Nieprzypisane</span>
+                                <div class="assign-widget">
+                                    @if (selectedTask.UzytkownikPrzypisany != null && !assignSearchOpen)
+                                    {
+                                        <div class="assign-current">
+                                            <div class="assign-avatar"
+                                                 style="background: @GetAvatarColor(selectedTask.UzytkownikPrzypisany.NazwaUzytkownika)">
+                                                @if (!string.IsNullOrEmpty(selectedTask.UzytkownikPrzypisany.AvatarUrl))
+                                                {
+                                                    <img src="@selectedTask.UzytkownikPrzypisany.AvatarUrl"
+                                                         alt="@selectedTask.UzytkownikPrzypisany.NazwaUzytkownika"
+                                                         class="assign-avatar-img" />
+                                                }
+                                                else
+                                                {
+                                                    @selectedTask.UzytkownikPrzypisany.NazwaUzytkownika.Substring(0, 1).ToUpperInvariant()
+                                                }
+                                            </div>
+                                            <span class="assign-name">@selectedTask.UzytkownikPrzypisany.NazwaUzytkownika</span>
+                                            <button class="assign-change-btn" @onclick="OpenAssignSearch" title="Zmień">✎</button>
+                                        </div>
+                                    }
+                                    else if (!assignSearchOpen)
+                                    {
+                                        <div class="assign-empty-row">
+                                            <span class="ticket-modal-assignee ticket-modal-assignee--none">Nieprzypisane</span>
+                                            <button class="assign-open-btn" @onclick="OpenAssignSearch">+ Przypisz</button>
+                                        </div>
+                                    }
+
+                                    @if (assignSearchOpen)
+                                    {
+                                        <div class="assign-search-wrap">
+                                            <span class="assign-search-icon">🔍</span>
+                                            <input class="assign-search-input"
+                                                   type="text"
+                                                   placeholder="Szukaj członka tablicy..."
+                                                   value="@assignSearchQuery"
+                                                   @oninput="OnAssignSearchInput"
+                                                   autocomplete="off" />
+                                            <button class="assign-cancel-btn" @onclick="CloseAssignSearch" title="Anuluj">✕</button>
+                                        </div>
+
+                                        <ul class="assign-results">
+                                            <!-- zawsze widoczna opcja zwolnienia zadania -->
+                                            <li class="assign-result-item assign-result-item--unassign" @onclick="UnassignAsync">
+                                                <div class="assign-result-avatar assign-unassign-icon">✕</div>
+                                                <div class="assign-result-info">
+                                                    <span>Pozostaw puste</span>
+                                                    <small>Usuń przypisanie</small>
+                                                </div>
+                                            </li>
+                                            @foreach (var m in assignSearchResults)
+                                            {
+                                                var mu = m;
+                                                <li class="assign-result-item" @onclick="() => AssignUserAsync(mu)">
+                                                    <div class="assign-result-avatar"
+                                                         style="background: @GetAvatarColor(mu.NazwaUzytkownika)">
+                                                        @if (!string.IsNullOrEmpty(mu.AvatarUrl))
+                                                        {
+                                                            <img src="@mu.AvatarUrl" alt="@mu.NazwaUzytkownika" class="assign-avatar-img" />
+                                                        }
+                                                        else
+                                                        {
+                                                            @mu.NazwaUzytkownika.Substring(0, 1).ToUpperInvariant()
+                                                        }
+                                                    </div>
+                                                    <div class="assign-result-info">
+                                                        <span>@mu.NazwaUzytkownika</span>
+                                                        <small>@mu.Email</small>
+                                                    </div>
+                                                </li>
+                                            }
+                                        </ul>
+                                        @if (assignSearchQuery.Length >= 1 && assignSearchResults.Count == 0)
+                                        {
+                                            <div class="assign-no-results">Brak wyników dla „@assignSearchQuery"</div>
+                                        }
+                                    }
+
+                                    @if (!isSavingAssign)
+                                    {
+                                        <button class="assign-me-btn" @onclick="AssignToMeAsync"
+                                                title="Przypisz to zadanie do siebie">
+                                            👤 Przypisz do mnie
+                                        </button>
+                                    }
+                                    else
+                                    {
+                                        <span class="ticket-modal-saving">Zapisywanie...</span>
+                                    }
+                                </div>
                             }
                         </div>
 
@@ -471,6 +569,13 @@ else
     private bool isDeletingTask;
     private string? taskModalError;
     private int currentUserId;
+
+    // Assign widget state
+    private bool assignSearchOpen;
+    private string assignSearchQuery = "";
+    private List<Uzytkownik> assignSearchResults = new();
+    private bool isSavingAssign;
+    private System.Threading.Timer? _assignDebounceTimer = null;
 
     // ── Drag & drop state ──────────────────────────
     private Zadanie? draggedTask;
@@ -784,14 +889,153 @@ else
     // ── Ticket modal ────────────────────────────────
     private void OpenTicketModal(Zadanie task)
     {
-        selectedTask   = task;
-        taskModalError = null;
+        selectedTask        = task;
+        taskModalError      = null;
+        assignSearchOpen    = false;
+        assignSearchQuery   = "";
+        assignSearchResults = new();
     }
 
     private void CloseTicketModal()
     {
-        selectedTask   = null;
+        selectedTask      = null;
+        taskModalError    = null;
+        assignSearchOpen  = false;
+        _assignDebounceTimer?.Dispose();
+    }
+
+    // ── Assign widget ───────────────────────────────
+    private void OpenAssignSearch()
+    {
+        assignSearchQuery   = "";
+        assignSearchResults = BuildAssignResults("");
+        assignSearchOpen    = true;
+    }
+
+    private void CloseAssignSearch()
+    {
+        assignSearchOpen    = false;
+        assignSearchQuery   = "";
+        assignSearchResults = new();
+        _assignDebounceTimer?.Dispose();
+    }
+
+    private void OnAssignSearchInput(ChangeEventArgs e)
+    {
+        assignSearchQuery   = e.Value?.ToString() ?? "";
+        assignSearchResults = BuildAssignResults(assignSearchQuery);
+    }
+
+    /// <summary>Filtruje lokalną listę boardMembers + owner wg wpisanej frazy (pomija viewerów).</summary>
+    private List<Uzytkownik> BuildAssignResults(string query)
+    {
+        if (board == null) return new();
+
+        var all = new List<Uzytkownik>();
+        if (board.Owner != null) all.Add(board.Owner);
+        foreach (var m in boardMembers)
+        {
+            if (m.Rola == "viewer") continue;
+            if (m.Uzytkownik != null) all.Add(m.Uzytkownik);
+        }
+
+        if (string.IsNullOrWhiteSpace(query))
+            return all;
+
+        return all.Where(u =>
+            u.NazwaUzytkownika.Contains(query, StringComparison.OrdinalIgnoreCase) ||
+            u.Email.Contains(query, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+    }
+
+    private async Task AssignUserAsync(Uzytkownik user)
+    {
+        if (selectedTask == null) return;
+        await SaveAssignmentAsync(user);
+    }
+
+    private async Task AssignToMeAsync()
+    {
+        if (selectedTask == null || board == null) return;
+
+        Uzytkownik? me = null;
+        if (board.Owner?.IdUzytkownika == currentUserId)
+            me = board.Owner;
+        else
+            me = boardMembers.FirstOrDefault(m => m.IdUzytkownika == currentUserId)?.Uzytkownik;
+
+        if (me == null)
+        {
+            using var s = ScopeFactory.CreateScope();
+            var db = s.ServiceProvider.GetRequiredService<AppDbContext>();
+            me = await db.Uzytkownicy.FindAsync(currentUserId);
+        }
+
+        if (me != null) await SaveAssignmentAsync(me);
+    }
+
+    private async Task UnassignAsync()
+    {
+        if (selectedTask == null) return;
+        isSavingAssign = true;
         taskModalError = null;
+        CloseAssignSearch();
+
+        try
+        {
+            using var scope = ScopeFactory.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+            var dbTask = await db.Zadania.FindAsync(selectedTask.IdZadania);
+            if (dbTask != null)
+            {
+                dbTask.IdUzytkownikaPrzypisanego = null;
+                await db.SaveChangesAsync();
+
+                selectedTask.IdUzytkownikaPrzypisanego = null;
+                selectedTask.UzytkownikPrzypisany      = null;
+            }
+        }
+        catch (Exception ex)
+        {
+            taskModalError = $"Błąd usuwania przypisania: {ex.Message}";
+        }
+        finally
+        {
+            isSavingAssign = false;
+        }
+    }
+
+    private async Task SaveAssignmentAsync(Uzytkownik user)
+    {
+        if (selectedTask == null) return;
+        isSavingAssign = true;
+        taskModalError = null;
+        CloseAssignSearch();
+
+        try
+        {
+            using var scope = ScopeFactory.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+            var dbTask = await db.Zadania.FindAsync(selectedTask.IdZadania);
+            if (dbTask != null)
+            {
+                dbTask.IdUzytkownikaPrzypisanego = user.IdUzytkownika;
+                await db.SaveChangesAsync();
+
+                selectedTask.IdUzytkownikaPrzypisanego = user.IdUzytkownika;
+                selectedTask.UzytkownikPrzypisany      = user;
+            }
+        }
+        catch (Exception ex)
+        {
+            taskModalError = $"Błąd przypisania: {ex.Message}";
+        }
+        finally
+        {
+            isSavingAssign = false;
+        }
     }
 
     private async Task ChangeTaskStatus(ChangeEventArgs e)
@@ -897,6 +1141,20 @@ else
             showDeleteConfirm = false;
             isDeleting = false;
         }
+    }
+
+    // ── Helpers ────────────────────────────────────
+    /// <summary>
+    /// Generuje deterministyczny, wielocyfrowy (6-znakowy) ID wyświetlany zamiast
+    /// sekwencyjnego klucza bazy danych. Ten sam idZadania zawsze daje ten sam wynik.
+    /// </summary>
+    private static string GetDisplayId(int idZadania)
+    {
+        var seed = idZadania * 131071 + 47;
+        var pseudo = (seed ^ (seed >> 16)) * 0x45d9f3b;
+        pseudo = (pseudo ^ (pseudo >> 16)) * 0x45d9f3b;
+        pseudo ^= pseudo >> 16;
+        return (Math.Abs(pseudo) % 900_000 + 100_000).ToString();
     }
 
     // ── Cleanup ────────────────────────────────────
