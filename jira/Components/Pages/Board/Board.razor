@@ -14,6 +14,7 @@
 @inject AuthenticationStateProvider AuthStateProvider
 @inject NavigationManager NavManager
 @inject BoardStateService BoardState
+@inject jira.Services.IEmailService EmailService
 
 @if (isLoading)
 {
@@ -1009,6 +1010,14 @@ else
     private async Task SaveAssignmentAsync(Uzytkownik user)
     {
         if (selectedTask == null) return;
+
+        // Skip if already assigned to this person
+        if (selectedTask.IdUzytkownikaPrzypisanego == user.IdUzytkownika)
+        {
+            CloseAssignSearch();
+            return;
+        }
+
         isSavingAssign = true;
         taskModalError = null;
         CloseAssignSearch();
@@ -1026,6 +1035,15 @@ else
 
                 selectedTask.IdUzytkownikaPrzypisanego = user.IdUzytkownika;
                 selectedTask.UzytkownikPrzypisany      = user;
+
+                // Send assignment notification email
+                await EmailService.SendAssignmentNotificationAsync(
+                    user.Email,
+                    user.NazwaUzytkownika,
+                    selectedTask.TytulZadania,
+                    board?.NazwaTablicy ?? "—",
+                    selectedTask.IdZadania,
+                    selectedTask.OpisZadania);
             }
         }
         catch (Exception ex)
@@ -1037,6 +1055,7 @@ else
             isSavingAssign = false;
         }
     }
+
 
     private async Task ChangeTaskStatus(ChangeEventArgs e)
     {
