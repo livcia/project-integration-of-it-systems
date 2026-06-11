@@ -1,6 +1,9 @@
 @using jira.DbModels
 
-<div class="ticket-card @PriorityClass"
+<div class="ticket-card @PriorityClass @(IsDragging ? "ticket-card--dragging" : "")"
+     draggable="true"
+     @ondragstart="HandleDragStart"
+     @ondragend="HandleDragEnd"
      @onclick="HandleClick"
      role="button"
      tabindex="0"
@@ -9,6 +12,7 @@
     <div class="ticket-card-header">
         <span class="ticket-priority-dot" title="Priorytet: @Task.Priorytet"></span>
         <span class="ticket-id">#@Task.IdZadania</span>
+        <span class="ticket-drag-handle" title="Przeciągnij">⠿</span>
     </div>
     <h6 class="ticket-title">@Task.TytulZadania</h6>
     @if (!string.IsNullOrWhiteSpace(Task.OpisZadania))
@@ -30,8 +34,24 @@
 @code {
     [Parameter, EditorRequired] public Zadanie Task { get; set; } = null!;
     [Parameter] public EventCallback<Zadanie> OnClick { get; set; }
+    [Parameter] public EventCallback<Zadanie> OnDragStart { get; set; }
+    [Parameter] public EventCallback OnDragEnd { get; set; }
+
+    private bool IsDragging { get; set; }
 
     private async Task HandleClick() => await OnClick.InvokeAsync(Task);
+
+    private async Task HandleDragStart(DragEventArgs e)
+    {
+        IsDragging = true;
+        await OnDragStart.InvokeAsync(Task);
+    }
+
+    private async Task HandleDragEnd(DragEventArgs e)
+    {
+        IsDragging = false;
+        await OnDragEnd.InvokeAsync();
+    }
 
     private async Task HandleKeyDown(KeyboardEventArgs e)
     {

@@ -7,8 +7,8 @@
     border-radius: 10px;
     padding: 0.75rem 0.9rem;
     box-shadow: 0 1px 4px rgba(9, 30, 66, 0.1);
-    cursor: pointer;
-    transition: box-shadow 0.18s, transform 0.14s, border-color 0.15s;
+    cursor: grab;
+    transition: box-shadow 0.18s, transform 0.14s, border-color 0.15s, opacity 0.15s;
     border-left: 4px solid #dde1e7;
     outline: none;
     position: relative;
@@ -24,6 +24,14 @@
     box-shadow: 0 0 0 3px rgba(38, 132, 255, 0.35);
 }
 
+/* Dragging state – ghost left behind */
+.ticket-card--dragging {
+    opacity: 0.35;
+    transform: rotate(1.5deg) scale(0.97);
+    box-shadow: 0 8px 24px rgba(9, 30, 66, 0.22);
+    cursor: grabbing;
+}
+
 /* Priority border colors */
 .ticket-card--high   { border-left-color: #de350b; }
 .ticket-card--medium { border-left-color: #ff8b00; }
@@ -35,6 +43,21 @@
     align-items: center;
     gap: 0.4rem;
     margin-bottom: 0.4rem;
+}
+
+/* Drag handle – subtle icon on the right */
+.ticket-drag-handle {
+    margin-left: auto;
+    font-size: 0.9rem;
+    color: #c1c7d0;
+    cursor: grab;
+    transition: color 0.12s;
+    line-height: 1;
+    user-select: none;
+}
+
+.ticket-card:hover .ticket-drag-handle {
+    color: #8993a4;
 }
 
 .ticket-priority-dot {

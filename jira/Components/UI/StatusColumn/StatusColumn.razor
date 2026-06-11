@@ -1,11 +1,24 @@
-<div class="col-md-3 mb-3">
-    <div class="bg-light p-3 rounded shadow-sm h-100">
-        <h5 class="text-uppercase mb-3 text-muted" style="font-size: 0.9rem; font-weight: 700;">
+<div class="kanban-col">
+    <div class="kanban-col-inner @(IsDragOver ? "kanban-col-inner--drag-over" : "")"
+         @ondragover="HandleDragOver"
+         @ondragover:preventDefault="true"
+         @ondragleave="HandleDragLeave"
+         @ondrop="HandleDrop"
+         @ondrop:preventDefault="true">
+
+        <h5 class="kanban-col-title">
             @Title
         </h5>
-        
-        <div class="d-flex flex-column gap-2">
-            @ChildContent
+
+        <div class="kanban-col-scroll">
+            <div class="kanban-col-cards">
+                @ChildContent
+            </div>
+
+            @if (IsDragOver)
+            {
+                <div class="kanban-drop-placeholder"></div>
+            }
         </div>
     </div>
 </div>
@@ -13,4 +26,24 @@
 @code {
     [Parameter] public string Title { get; set; } = "Kolumna";
     [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public string ColumnKey { get; set; } = "";
+    [Parameter] public EventCallback<string> OnDrop { get; set; }
+
+    private bool IsDragOver { get; set; }
+
+    private void HandleDragOver(DragEventArgs e)
+    {
+        IsDragOver = true;
+    }
+
+    private void HandleDragLeave(DragEventArgs e)
+    {
+        IsDragOver = false;
+    }
+
+    private async Task HandleDrop(DragEventArgs e)
+    {
+        IsDragOver = false;
+        await OnDrop.InvokeAsync(ColumnKey);
+    }
 }
