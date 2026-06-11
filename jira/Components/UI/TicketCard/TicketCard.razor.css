@@ -92,23 +92,27 @@
     -webkit-box-orient: vertical;
 }
 
-.ticket-desc {
-    font-size: 0.775rem;
-    color: #6b778c;
-    margin: 0 0 0.5rem;
-    line-height: 1.4;
-    overflow: hidden;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-}
 
-/* ── Footer (badge + avatar) ─────────────────── */
+/* ── Footer (badge + age + avatar) ──────────── */
 .ticket-footer {
     display: flex;
     align-items: center;
     justify-content: space-between;
     margin-top: 0.5rem;
+}
+
+.ticket-footer-left {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    min-width: 0;
+}
+
+.ticket-age {
+    font-size: 0.68rem;
+    color: #8993a4;
+    font-weight: 500;
+    white-space: nowrap;
 }
 
 .ticket-priority-badge {
@@ -143,4 +147,12 @@
     flex-shrink: 0;
     border: 2px solid #fff;
     box-shadow: 0 1px 4px rgba(9, 30, 66, 0.2);
+    overflow: hidden; /* potrzebne żeby img nie wychodził poza okrąg */
+}
+
+.ticket-assignee-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
 }

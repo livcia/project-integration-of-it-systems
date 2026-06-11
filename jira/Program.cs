@@ -148,11 +148,16 @@ app.MapGet("/api/auth/callback", async (
     var user = await db.Uzytkownicy.FirstOrDefaultAsync(u => u.Email == email);
     if (user is null)
     {
+        // Jeśli OAuth nie dostarczył avatara, wygeneruj z Dicebear API na podstawie imienia
+        var avatarUrl = !string.IsNullOrEmpty(avatar)
+            ? avatar
+            : $"https://api.dicebear.com/10.x/lorelei/svg?seed={Uri.EscapeDataString(name)}";
+
         user = new jira.DbModels.Uzytkownik
         {
             Email = email,
             NazwaUzytkownika = name,
-            AvatarUrl = avatar,
+            AvatarUrl = avatarUrl,
             PasswordHash = string.Empty,
             DataRejestracji = DateTime.UtcNow,
         };
@@ -161,7 +166,15 @@ app.MapGet("/api/auth/callback", async (
     else
     {
         user.NazwaUzytkownika = name;
-        if (!string.IsNullOrEmpty(avatar)) user.AvatarUrl = avatar;
+        if (!string.IsNullOrEmpty(avatar))
+        {
+            user.AvatarUrl = avatar;
+        }
+        else if (string.IsNullOrEmpty(user.AvatarUrl))
+        {
+            // Uzupełnij brakujący avatar dla istniejącego użytkownika
+            user.AvatarUrl = $"https://api.dicebear.com/10.x/lorelei/svg?seed={Uri.EscapeDataString(name)}";
+        }
     }
 
     if (provider.Equals("Google", StringComparison.OrdinalIgnoreCase))
