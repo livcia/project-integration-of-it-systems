@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using SendGrid;
 using SendGrid.Helpers.Mail;
 
@@ -42,7 +43,6 @@ public class SendGridEmailService : IEmailService
 
             var from = new EmailAddress(fromEmail, fromName);
             var to = new EmailAddress(toEmail, toName);
-            Console.WriteLine("gowno? ");
             var subject = $"[Jira] Przypisano Ci zadanie: {taskTitle}";
             Console.WriteLine("gowno? ");
             var descriptionHtml = string.IsNullOrWhiteSpace(taskDescription)
@@ -69,22 +69,24 @@ public class SendGridEmailService : IEmailService
                 </head>
                 <body>
                     <div class="container">
-                        <div class="header">
-                            <h1>System Jira – Nowe przypisanie zadania</h1>
-                        </div>
-                        <div class="body">
-                            <h2>Cześć, {{System.Net.WebUtility.HtmlEncode(toName)}}!</h2>
-                            <p>Zostało Ci przypisane nowe zadanie. Poniżej znajdziesz szczegóły:</p>
-                            <div class="meta">
-                                <p><span class="label">Tytuł zadania:</span> {{System.Net.WebUtility.HtmlEncode(taskTitle)}}</p>
-                                <p><span class="label">ID zadania:</span> #{{taskId}}</p>
-                                <p><span class="label">Tablica:</span> {{System.Net.WebUtility.HtmlEncode(boardName)}}</p>
-                            </div>
-                            <p><span class="label">Opis:</span></p>
-                            {{descriptionHtml}}
-                        </div>
+                        <h2>Zostałeś/aś przypisany/a do zadania</h2>
+                        <p>Cześć, {{System.Net.WebUtility.HtmlEncode(toName)}}!</p>
+                        <p>Przypisano Cię do nowego zadania w tablicy <strong>{{System.Net.WebUtility.HtmlEncode(boardName)}}</strong>.</p>
+
+                        <div class="field-label">ID zadania:</div>
+                        <div class="field-value">#{{taskId}}</div>
+
+                        <div class="field-label">Tytuł zadania:</div>
+                        <div class="field-value">{{System.Net.WebUtility.HtmlEncode(taskTitle)}}</div>
+
+                        <div class="field-label">Opis:</div>
+                        {{descriptionHtml}}
+
+                        <div class="field-label">Tablica:</div>
+                        <div class="field-value">{{System.Net.WebUtility.HtmlEncode(boardName)}}</div>
+
                         <div class="footer">
-                            Ta wiadomość została wygenerowana automatycznie przez System Jira. Prosimy nie odpowiadać na ten e-mail.
+                            Wiadomość wygenerowana automatycznie przez System Jira. Prosimy nie odpowiadać na tego e-maila.
                         </div>
                     </div>
                 </body>
