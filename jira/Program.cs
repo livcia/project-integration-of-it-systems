@@ -80,6 +80,7 @@ builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
 builder.Services.AddControllers();
+builder.Services.AddHealthChecks();
 
 var app = builder.Build();
 
@@ -206,6 +207,7 @@ app.MapGet("/api/auth/logout", async (HttpContext ctx) =>
 
 app.MapStaticAssets();
 app.MapControllers();
+app.MapHealthChecks("/health");
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 
