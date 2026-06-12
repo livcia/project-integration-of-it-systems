@@ -81,7 +81,7 @@ else
             <!-- ── Members avatars strip ── -->
             @{
                 var allMembers = GetAllBoardMembersForDisplay();
-                var visibleMembers = allMembers.Take(5).ToList();
+                var visibleMembers = allMembers.Take(MaxVisibleAvatars).ToList();
                 var hiddenCount = allMembers.Count - visibleMembers.Count;
             }
             <div class="members-strip" id="members-strip-container">
@@ -852,6 +852,7 @@ else
 
     // ── Members popup state ───────────────────────
     private bool showMembersPopup;
+    private const int MaxVisibleAvatars = 5;
 
     private record MemberDisplayInfo(int UserId, string Name, string? AvatarUrl, string Role);
 
@@ -1222,7 +1223,8 @@ else
             await db.SaveChangesAsync();
 
             // Load the user nav property
-            komentarz.Uzytkownik = await db.Uzytkownicy.FindAsync(currentUserId);
+            komentarz.Uzytkownik = await db.Uzytkownicy.FindAsync(currentUserId)
+                                  ?? throw new InvalidOperationException("Nie odnaleziono zalogowanego użytkownika w bazie danych.");
 
             taskComments.Insert(0, komentarz);
             newCommentText = "";
@@ -1525,6 +1527,7 @@ else
                 taskList?.Remove(selectedTask);
             }
 
+            isDeletingTask = false;
             CloseTicketModal();
         }
         catch (Exception ex)

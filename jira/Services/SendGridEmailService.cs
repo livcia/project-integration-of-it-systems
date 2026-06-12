@@ -102,7 +102,7 @@ public class SendGridEmailService : IEmailService
 
             var response = await client.SendEmailAsync(msg);
 
-            if ((int)response.StatusCode >= 400)
+            if ((int)response.StatusCode >= (int)System.Net.HttpStatusCode.BadRequest)
             {
                 var body = await response.Body.ReadAsStringAsync();
                 _logger.LogError(
