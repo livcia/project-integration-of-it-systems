@@ -74,6 +74,7 @@ builder.Services
 builder.Services.AddAuthorization();
 
 builder.Services.AddScoped<BoardStateService>();
+builder.Services.AddScoped<IEmailService, SendGridEmailService>();
 
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();

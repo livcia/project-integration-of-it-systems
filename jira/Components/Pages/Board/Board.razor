@@ -361,7 +361,7 @@ else
 
                 <!-- Body -->
                 <div class="ticket-modal-body">
-                    <!-- Left: description -->
+                    <!-- Left: description + comments -->
                     <div class="ticket-modal-left">
                         <p class="ticket-modal-section-label">Opis</p>
                         @if (!string.IsNullOrWhiteSpace(selectedTask.OpisZadania))
@@ -372,6 +372,130 @@ else
                         {
                             <p class="ticket-modal-desc ticket-modal-desc--empty">Brak opisu zadania.</p>
                         }
+
+                        <!-- Comments section -->
+                        <div class="comments-section">
+                            <p class="ticket-modal-section-label comments-title">💬 Komentarze (@taskComments.Count)</p>
+
+                            @if (isLoadingComments)
+                            {
+                                <div class="comments-loading">
+                                    <span class="comments-spinner"></span>
+                                    <span>Ładowanie komentarzy...</span>
+                                </div>
+                            }
+                            else
+                            {
+                                @if (taskComments.Count == 0)
+                                {
+                                    <p class="comments-empty">Brak komentarzy. Bądź pierwszy!</p>
+                                }
+                                else
+                                {
+                                    <ul class="comments-list">
+                                        @foreach (var comment in taskComments)
+                                        {
+                                            var c = comment;
+                                            <li class="comment-item">
+                                                <div class="comment-avatar"
+                                                     style="background: @GetAvatarColor(c.Uzytkownik?.NazwaUzytkownika ?? "?")"
+                                                     title="@(c.Uzytkownik?.NazwaUzytkownika ?? "Nieznany")">
+                                                    @if (!string.IsNullOrEmpty(c.Uzytkownik?.AvatarUrl))
+                                                    {
+                                                        <img src="@c.Uzytkownik.AvatarUrl" alt="@c.Uzytkownik.NazwaUzytkownika" class="comment-avatar-img" />
+                                                    }
+                                                    else
+                                                    {
+                                                        @((c.Uzytkownik?.NazwaUzytkownika ?? "?").Substring(0, 1).ToUpperInvariant())
+                                                    }
+                                                </div>
+                                                <div class="comment-body">
+                                                    <div class="comment-meta">
+                                                        <span class="comment-author">@(c.Uzytkownik?.NazwaUzytkownika ?? "Nieznany")</span>
+                                                        <span class="comment-date">@FormatCommentDate(c.DataUtworzenia)</span>
+                                                        @if (c.DataEdycji.HasValue)
+                                                        {
+                                                            <span class="comment-edited">(edytowano)</span>
+                                                        }
+                                                    </div>
+                                                    @if (editingCommentId == c.IdKomentarza)
+                                                    {
+                                                        <textarea class="comment-edit-input"
+                                                                  @bind="editCommentText"
+                                                                  rows="3"></textarea>
+                                                        <div class="comment-edit-actions">
+                                                            <button class="comment-save-btn" @onclick="() => SaveEditedCommentAsync(c)"
+                                                                    disabled="@isSavingComment">Zapisz</button>
+                                                            <button class="comment-cancel-btn" @onclick="CancelEditComment">Anuluj</button>
+                                                        </div>
+                                                    }
+                                                    else
+                                                    {
+                                                        <p class="comment-text">@c.TrescKomentarza</p>
+                                                        @if (c.IdUzytkownika == currentUserId)
+                                                        {
+                                                            <div class="comment-actions">
+                                                                <button class="comment-action-btn" @onclick="() => StartEditComment(c)" title="Edytuj">✎ Edytuj</button>
+                                                                <button class="comment-action-btn comment-action-btn--delete" @onclick="() => DeleteCommentAsync(c)" title="Usuń">🗑 Usuń</button>
+                                                            </div>
+                                                        }
+                                                    }
+                                                </div>
+                                            </li>
+                                        }
+                                    </ul>
+                                }
+
+                                @if (canAddTask)
+                                {
+                                    <!-- Add comment form (only non-viewers) -->
+                                    <div class="comment-add-wrap">
+                                        <div class="comment-add-avatar"
+                                             style="background: @GetAvatarColor(currentUserName)">
+                                            @if (!string.IsNullOrEmpty(currentUserAvatarUrl))
+                                            {
+                                                <img src="@currentUserAvatarUrl" alt="@currentUserName" class="comment-avatar-img" />
+                                            }
+                                            else
+                                            {
+                                                @(currentUserName.Length > 0 ? currentUserName.Substring(0, 1).ToUpperInvariant() : "?")
+                                            }
+                                        </div>
+                                        <div class="comment-add-input-wrap">
+                                            <textarea class="comment-add-input"
+                                                      @bind="newCommentText"
+                                                      @bind:event="oninput"
+                                                      placeholder="Dodaj komentarz..."
+                                                      rows="2"
+                                                      id="comment-input-@selectedTask.IdZadania"></textarea>
+                                            <div class="comment-add-footer">
+                                                @if (!string.IsNullOrEmpty(commentError))
+                                                {
+                                                    <span class="comment-error">@commentError</span>
+                                                }
+                                                <button class="comment-submit-btn"
+                                                        @onclick="AddCommentAsync"
+                                                        disabled="@(isSavingComment || string.IsNullOrWhiteSpace(newCommentText))">
+                                                    @if (isSavingComment)
+                                                    {
+                                                        <span class="comment-btn-spinner"></span>
+                                                        <span>Zapisywanie...</span>
+                                                    }
+                                                    else
+                                                    {
+                                                        <span>Wyślij</span>
+                                                    }
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <p class="comments-viewer-note">👁 Obserwatorzy mogą tylko czytać komentarze.</p>
+                                }
+                            }
+                        </div>
                     </div>
 
                     <!-- Right: metadata -->
@@ -569,6 +693,17 @@ else
     private bool isDeletingTask;
     private string? taskModalError;
     private int currentUserId;
+    private string currentUserName = "";
+    private string? currentUserAvatarUrl;
+
+    // ── Comments state ─────────────────────────────
+    private List<Komentarz> taskComments = new();
+    private bool isLoadingComments;
+    private string newCommentText = "";
+    private bool isSavingComment;
+    private string? commentError;
+    private int? editingCommentId;
+    private string editCommentText = "";
 
     // Assign widget state
     private bool assignSearchOpen;
@@ -681,6 +816,19 @@ else
                 using var ls = ScopeFactory.CreateScope();
                 var ldb = ls.ServiceProvider.GetRequiredService<AppDbContext>();
                 currentUserId = (await ldb.Uzytkownicy.FirstOrDefaultAsync(u => u.Email == email))?.IdUzytkownika ?? 0;
+            }
+        }
+
+        // Load current user info for comment avatar
+        if (currentUserId > 0)
+        {
+            using var us = ScopeFactory.CreateScope();
+            var udb = us.ServiceProvider.GetRequiredService<AppDbContext>();
+            var me = await udb.Uzytkownicy.FindAsync(currentUserId);
+            if (me != null)
+            {
+                currentUserName      = me.NazwaUzytkownika;
+                currentUserAvatarUrl = me.AvatarUrl;
             }
         }
 
@@ -894,6 +1042,11 @@ else
         assignSearchOpen    = false;
         assignSearchQuery   = "";
         assignSearchResults = new();
+        newCommentText      = "";
+        commentError        = null;
+        editingCommentId    = null;
+        taskComments        = new();
+        _ = LoadCommentsAsync(task.IdZadania);
     }
 
     private void CloseTicketModal()
@@ -901,7 +1054,152 @@ else
         selectedTask      = null;
         taskModalError    = null;
         assignSearchOpen  = false;
+        taskComments      = new();
+        editingCommentId  = null;
         _assignDebounceTimer?.Dispose();
+    }
+
+    // ── Comments ────────────────────────────────────
+    private async Task LoadCommentsAsync(int zadanieId)
+    {
+        isLoadingComments = true;
+        await InvokeAsync(StateHasChanged);
+        try
+        {
+            using var scope = ScopeFactory.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            taskComments = await db.Komentarze
+                .Include(k => k.Uzytkownik)
+                .Where(k => k.IdZadania == zadanieId)
+                .OrderByDescending(k => k.DataUtworzenia)
+                .ToListAsync();
+        }
+        catch
+        {
+            taskComments = new();
+        }
+        finally
+        {
+            isLoadingComments = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task AddCommentAsync()
+    {
+        if (selectedTask == null || string.IsNullOrWhiteSpace(newCommentText)) return;
+
+        isSavingComment = true;
+        commentError = null;
+
+        try
+        {
+            using var scope = ScopeFactory.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+            var komentarz = new Komentarz
+            {
+                IdZadania       = selectedTask.IdZadania,
+                IdUzytkownika   = currentUserId,
+                TrescKomentarza = newCommentText.Trim(),
+                DataUtworzenia  = DateTime.UtcNow,
+            };
+
+            db.Komentarze.Add(komentarz);
+            await db.SaveChangesAsync();
+
+            // Load the user nav property
+            komentarz.Uzytkownik = await db.Uzytkownicy.FindAsync(currentUserId);
+
+            taskComments.Insert(0, komentarz);
+            newCommentText = "";
+        }
+        catch (Exception ex)
+        {
+            commentError = $"Błąd dodawania komentarza: {ex.Message}";
+        }
+        finally
+        {
+            isSavingComment = false;
+        }
+    }
+
+    private void StartEditComment(Komentarz komentarz)
+    {
+        editingCommentId = komentarz.IdKomentarza;
+        editCommentText  = komentarz.TrescKomentarza;
+    }
+
+    private void CancelEditComment()
+    {
+        editingCommentId = null;
+        editCommentText  = "";
+    }
+
+    private async Task SaveEditedCommentAsync(Komentarz komentarz)
+    {
+        if (string.IsNullOrWhiteSpace(editCommentText)) return;
+
+        isSavingComment = true;
+        try
+        {
+            using var scope = ScopeFactory.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+            var dbComment = await db.Komentarze.FindAsync(komentarz.IdKomentarza);
+            if (dbComment != null)
+            {
+                dbComment.TrescKomentarza = editCommentText.Trim();
+                dbComment.DataEdycji      = DateTime.UtcNow;
+                await db.SaveChangesAsync();
+
+                komentarz.TrescKomentarza = dbComment.TrescKomentarza;
+                komentarz.DataEdycji      = dbComment.DataEdycji;
+            }
+            editingCommentId = null;
+            editCommentText  = "";
+        }
+        catch (Exception ex)
+        {
+            commentError = $"Błąd edycji: {ex.Message}";
+        }
+        finally
+        {
+            isSavingComment = false;
+        }
+    }
+
+    private async Task DeleteCommentAsync(Komentarz komentarz)
+    {
+        try
+        {
+            using var scope = ScopeFactory.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+            var dbComment = await db.Komentarze.FindAsync(komentarz.IdKomentarza);
+            if (dbComment != null)
+            {
+                db.Komentarze.Remove(dbComment);
+                await db.SaveChangesAsync();
+                taskComments.Remove(komentarz);
+            }
+        }
+        catch (Exception ex)
+        {
+            commentError = $"Błąd usuwania komentarza: {ex.Message}";
+        }
+    }
+
+    private static string FormatCommentDate(DateTime utc)
+    {
+        var local = utc.ToLocalTime();
+        var now   = DateTime.Now;
+        var diff  = now - local;
+        if (diff.TotalMinutes < 1)   return "przed chwilą";
+        if (diff.TotalMinutes < 60)  return $"{(int)diff.TotalMinutes} min temu";
+        if (diff.TotalHours   < 24)  return $"{(int)diff.TotalHours} godz. temu";
+        if (diff.TotalDays    < 7)   return $"{(int)diff.TotalDays} dni temu";
+        return local.ToString("dd.MM.yyyy HH:mm");
     }
 
     // ── Assign widget ───────────────────────────────
