@@ -8,6 +8,7 @@
 @inject IServiceScopeFactory ScopeFactory
 @inject AuthenticationStateProvider AuthStateProvider
 @inject NavigationManager NavManager
+@inject jira.Services.IEmailService EmailService
 
 <div class="create-board-wrapper">
     <div class="create-board-card">
@@ -262,6 +263,22 @@
 
             savedTaskTitle = zadanie.TytulZadania;
             saveSuccess = true;
+
+            // Send assignment notification email if an assignee was selected
+            if (zadanie.IdUzytkownikaPrzypisanego.HasValue)
+            {
+                var assignee = boardUsers.FirstOrDefault(u => u.IdUzytkownika == zadanie.IdUzytkownikaPrzypisanego.Value);
+                if (assignee != null)
+                {
+                    await EmailService.SendAssignmentNotificationAsync(
+                        assignee.Email,
+                        assignee.NazwaUzytkownika,
+                        zadanie.TytulZadania,
+                        boardName ?? "—",
+                        zadanie.IdZadania,
+                        zadanie.OpisZadania);
+                }
+            }
 
             // Small delay so user sees the success message, then redirect
             await Task.Delay(1200);

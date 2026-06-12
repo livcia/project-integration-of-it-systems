@@ -43,12 +43,11 @@ public class SendGridEmailService : IEmailService
 
             var from = new EmailAddress(fromEmail, fromName);
             var to = new EmailAddress(toEmail, toName);
-
-            var subject = $"[Jira] Przypisano Cię do zadania: {taskTitle}";
-
+            var subject = $"[Jira] Przypisano Ci zadanie: {taskTitle}";
+            Console.WriteLine("gowno? ");
             var descriptionHtml = string.IsNullOrWhiteSpace(taskDescription)
                 ? "<p><em>Brak opisu.</em></p>"
-                : $"<p>{System.Net.WebUtility.HtmlEncode(taskDescription)}</p>";
+                : $"<p>{System.Net.WebUtility.HtmlEncode(taskDescription).Replace("\n", "<br/>")}</p>";
 
             var htmlContent = $$"""
                 <!DOCTYPE html>
@@ -56,12 +55,16 @@ public class SendGridEmailService : IEmailService
                 <head>
                     <meta charset="UTF-8" />
                     <style>
-                        body { font-family: Arial, sans-serif; background-color: #f4f4f4; margin: 0; padding: 20px; }
-                        .container { max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 8px; padding: 30px; box-shadow: 0 2px 6px rgba(0,0,0,0.1); }
-                        h2 { color: #0052cc; }
-                        .field-label { font-weight: bold; color: #555; margin-top: 16px; }
-                        .field-value { margin: 4px 0 0 0; color: #222; }
-                        .footer { margin-top: 30px; font-size: 12px; color: #999; border-top: 1px solid #eee; padding-top: 12px; }
+                        body { font-family: Arial, sans-serif; background-color: #f4f6f8; margin: 0; padding: 0; }
+                        .container { max-width: 600px; margin: 40px auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+                        .header { background-color: #0052cc; padding: 24px 32px; }
+                        .header h1 { color: #ffffff; margin: 0; font-size: 20px; }
+                        .body { padding: 32px; color: #172b4d; }
+                        .body h2 { font-size: 18px; margin-top: 0; }
+                        .meta { background-color: #f4f6f8; border-radius: 6px; padding: 16px; margin: 16px 0; font-size: 14px; }
+                        .meta p { margin: 4px 0; }
+                        .label { font-weight: bold; color: #5e6c84; }
+                        .footer { padding: 16px 32px; font-size: 12px; color: #97a0af; border-top: 1px solid #dfe1e6; }
                     </style>
                 </head>
                 <body>
@@ -90,34 +93,34 @@ public class SendGridEmailService : IEmailService
                 </html>
                 """;
 
-            var plainTextContent = $"Cześć, {toName}!\n\n"
-                + $"Przypisano Cię do zadania #{taskId}: {taskTitle}\n"
-                + $"Tablica: {boardName}\n"
-                + $"Opis: {(string.IsNullOrWhiteSpace(taskDescription) ? "Brak opisu." : taskDescription)}\n";
+            var plainText = $"Cześć {toName},\n\nZostało Ci przypisane zadanie:\n" +
+                            $"Tytuł: {taskTitle}\n" +
+                            $"ID: #{taskId}\n" +
+                            $"Tablica: {boardName}\n" +
+                            $"Opis: {taskDescription ?? "Brak opisu."}\n";
 
-            var msg = MailHelper.CreateSingleEmail(from, to, subject, plainTextContent, htmlContent);
+            var msg = MailHelper.CreateSingleEmail(from, to, subject, plainText, htmlContent);
 
             var response = await client.SendEmailAsync(msg);
 
-            if (response.IsSuccessStatusCode)
+            if ((int)response.StatusCode >= 400)
             {
-                _logger.LogInformation(
-                    "Assignment notification email sent successfully to {ToEmail} for task #{TaskId}.",
-                    toEmail, taskId);
+                var body = await response.Body.ReadAsStringAsync();
+                _logger.LogError(
+                    "SendGrid returned error status {StatusCode} when sending to {Email}. Body: {Body}",
+                    response.StatusCode, toEmail, body);
             }
             else
             {
-                var body = await response.Body.ReadAsStringAsync();
-                _logger.LogWarning(
-                    "SendGrid returned non-success status {StatusCode} for task #{TaskId}. Body: {Body}",
-                    response.StatusCode, taskId, body);
+                _logger.LogInformation(
+                    "Assignment notification sent successfully to {Email} for task #{TaskId}.",
+                    toEmail, taskId);
             }
+            Console.WriteLine("weszlo? ");
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex,
-                "Failed to send assignment notification email to {ToEmail} for task #{TaskId}.",
-                toEmail, taskId);
+            _logger.LogError(ex, "Failed to send assignment notification email to {Email} for task #{TaskId}.", toEmail, taskId);
         }
     }
 }
