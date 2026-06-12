@@ -77,12 +77,91 @@ else
                     🗑 Usuń tablicę
                 </button>
             }
-            @if (canInvite)
-            {
-                <button type="button" class="btn btn-outline-secondary" @onclick="OpenInvitePanel">
-                    👥 Zaproś do tablicy
-                </button>
+
+            <!-- ── Members avatars strip ── -->
+            @{
+                var allMembers = GetAllBoardMembersForDisplay();
+                var visibleMembers = allMembers.Take(5).ToList();
+                var hiddenCount = allMembers.Count - visibleMembers.Count;
             }
+            <div class="members-strip" id="members-strip-container">
+                @foreach (var (member, index) in visibleMembers.Select((m, i) => (m, i)))
+                {
+                    <div class="member-avatar-chip"
+                         style="background:@GetAvatarColor(member.Name); z-index:@(10 - index);"
+                         title="@member.Name">
+                        @if (!string.IsNullOrEmpty(member.AvatarUrl))
+                        {
+                            <img src="@member.AvatarUrl" alt="@member.Name" class="member-avatar-chip-img" />
+                        }
+                        else
+                        {
+                            @member.Name.Substring(0, 1).ToUpperInvariant()
+                        }
+                        <span class="member-avatar-tooltip">@member.Name</span>
+                    </div>
+                }
+                @if (hiddenCount > 0)
+                {
+                    <button class="member-more-btn" @onclick="ToggleMembersPopup" title="Pokaż wszystkich członków">
+                        +@hiddenCount
+                    </button>
+                }
+                else if (canInvite)
+                {
+                    <button class="member-invite-chip" @onclick="OpenInvitePanel" title="Zaproś do tablicy">
+                        +
+                    </button>
+                }
+
+                @if (showMembersPopup)
+                {
+                    <div class="members-popup-overlay" @onclick="CloseMembersPopup"></div>
+                    <div class="members-popup">
+                        <div class="members-popup-header">
+                            <span>Członkowie tablicy (@allMembers.Count)</span>
+                            <button class="members-popup-close" @onclick="CloseMembersPopup">✕</button>
+                        </div>
+                        <ul class="members-popup-list">
+                            @foreach (var member2 in allMembers)
+                            {
+                                <li class="members-popup-item">
+                                    <div class="member-avatar-chip member-avatar-chip--lg"
+                                         style="background:@GetAvatarColor(member2.Name);">
+                                        @if (!string.IsNullOrEmpty(member2.AvatarUrl))
+                                        {
+                                            <img src="@member2.AvatarUrl" alt="@member2.Name" class="member-avatar-chip-img" />
+                                        }
+                                        else
+                                        {
+                                            @member2.Name.Substring(0, 1).ToUpperInvariant()
+                                        }
+                                    </div>
+                                    <div class="members-popup-info">
+                                        <span class="members-popup-name">
+                                            @member2.Name
+                                            @if (member2.UserId == currentUserId)
+                                            {
+                                                <span class="invite-member-you"> (Ty)</span>
+                                            }
+                                        </span>
+                                        <span class="members-popup-role invite-member-role invite-member-role--@member2.Role">@RoleLabel(member2.Role)</span>
+                                    </div>
+                                </li>
+                            }
+                        </ul>
+                        @if (canInvite)
+                        {
+                            <div class="members-popup-footer">
+                                <button class="members-popup-invite-btn" @onclick="() => { CloseMembersPopup(); OpenInvitePanel(); }">
+                                    👥 Zaproś nowego członka
+                                </button>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+
             @if (canAddTask)
             {
                 <a class="btn btn-primary" href="@($"/ticket/new?boardId={board.IdTablicy}")" >+ Dodaj zadanie</a>
@@ -770,6 +849,41 @@ else
     private string? inviteErrorMsg;
     private List<TablicaUzytkownik> boardMembers = new();
     private System.Threading.Timer? _debounceTimer;
+
+    // ── Members popup state ───────────────────────
+    private bool showMembersPopup;
+
+    private record MemberDisplayInfo(int UserId, string Name, string? AvatarUrl, string Role);
+
+    private List<MemberDisplayInfo> GetAllBoardMembersForDisplay()
+    {
+        var result = new List<MemberDisplayInfo>();
+        if (board == null) return result;
+
+        // Owner first
+        if (board.Owner != null)
+            result.Add(new MemberDisplayInfo(
+                board.Owner.IdUzytkownika,
+                board.Owner.NazwaUzytkownika,
+                board.Owner.AvatarUrl,
+                "owner"));
+
+        // Additional members
+        foreach (var m in boardMembers)
+        {
+            if (m.Uzytkownik != null)
+                result.Add(new MemberDisplayInfo(
+                    m.Uzytkownik.IdUzytkownika,
+                    m.Uzytkownik.NazwaUzytkownika,
+                    m.Uzytkownik.AvatarUrl,
+                    m.Rola));
+        }
+
+        return result;
+    }
+
+    private void ToggleMembersPopup() => showMembersPopup = !showMembersPopup;
+    private void CloseMembersPopup() => showMembersPopup = false;
 
     // ── Avatar palette ─────────────────────────────
     private static readonly string[] AvatarColors =
