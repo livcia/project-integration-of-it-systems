@@ -44,7 +44,6 @@ public class SendGridEmailService : IEmailService
             var from = new EmailAddress(fromEmail, fromName);
             var to = new EmailAddress(toEmail, toName);
             var subject = $"[Jira] Przypisano Ci zadanie: {taskTitle}";
-            Console.WriteLine("gowno? ");
             var descriptionHtml = string.IsNullOrWhiteSpace(taskDescription)
                 ? "<p><em>Brak opisu.</em></p>"
                 : $"<p>{System.Net.WebUtility.HtmlEncode(taskDescription).Replace("\n", "<br/>")}</p>";
@@ -116,7 +115,6 @@ public class SendGridEmailService : IEmailService
                     "Assignment notification sent successfully to {Email} for task #{TaskId}.",
                     toEmail, taskId);
             }
-            Console.WriteLine("weszlo? ");
         }
         catch (Exception ex)
         {

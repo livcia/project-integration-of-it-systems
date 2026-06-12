@@ -861,7 +861,6 @@ else
                          board.TabliceUzyt.Any(tu =>
                              tu.IdUzytkownika == currentUserId &&
                              tu.Rola == "member");
-            // viewer => canAddTask stays false
 
             boardMembers = board.TabliceUzyt.ToList();
         }
@@ -869,7 +868,6 @@ else
         isLoading = false;
     }
 
-    // ── Invite panel ───────────────────────────────
     private void OpenInvitePanel()
     {
         inviteSearchQuery = "";
