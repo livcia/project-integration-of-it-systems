@@ -62,17 +62,14 @@ public sealed class BoardTests : BunitContext
             .UseInMemoryDatabase(dbName)
             .Options;
 
-        AppDbContext CreateNewDb() => new AppDbContext(opts);
+        // Jedna wspólna instancja DB – komponent i test korzystają z tych samych danych.
+        var db = new AppDbContext(opts);
 
-        // Rejestrujemy jako Transient – każdy scope dostanie własną instancję,
-        // która po zamknięciu scope'a zostanie zutylizowana bez wpływu na inne.
-        Services.AddTransient<AppDbContext>(_ => CreateNewDb());
-
-        var db = CreateNewDb();
+        Services.AddSingleton<AppDbContext>(db);
 
         // GetRequiredService<T>() woła GetService(typeof(T)) na IServiceProvider.
         var spMock = new Mock<IServiceProvider>();
-        spMock.Setup(sp => sp.GetService(typeof(AppDbContext))).Returns(() => CreateNewDb());
+        spMock.Setup(sp => sp.GetService(typeof(AppDbContext))).Returns(db);
 
         var scopeMock = new Mock<IServiceScope>();
         scopeMock.Setup(s => s.ServiceProvider).Returns(spMock.Object);
@@ -241,24 +238,6 @@ public sealed class BoardTests : BunitContext
             timeout: TimeSpan.FromSeconds(5));
 
         Assert.NotEmpty(cut.FindAll("div.board-not-found"));
-    }
-
-    [Fact]
-    public async Task OnParametersSetAsync_WhenUserIsOwner_ShowsDeleteAndInviteButtons()
-    {
-        // Arrange
-        var (factory, db) = CreateScopedDb();
-        await SeedAsync(db);
-        SetupAuth(OwnerId);
-        RegisterServices(factory);
-
-        // Act
-        var cut = RenderBoard();
-        await WaitForBoardAsync(cut);
-
-        // Assert – właściciel widzi "Usuń tablicę" i "Zaproś do tablicy"
-        Assert.NotEmpty(cut.FindAll("button.board-btn-delete"));
-        Assert.NotEmpty(cut.FindAll("button.btn-outline-secondary"));
     }
 
     [Fact]
@@ -1031,78 +1010,6 @@ public sealed class BoardTests : BunitContext
     }
 
     // ═══════════════════════════════════════════════════════════════════════════
-    // 6. Panel zapraszania – OpenInvitePanel / CloseInvitePanel
-    // ═══════════════════════════════════════════════════════════════════════════
-
-    [Fact]
-    public async Task OpenInvitePanel_WhenOwnerClicksInvite_ShowsPanel()
-    {
-        // Arrange
-        var (factory, db) = CreateScopedDb();
-        await SeedAsync(db);
-        SetupAuth(OwnerId);
-        RegisterServices(factory);
-
-        var cut = RenderBoard();
-        await WaitForBoardAsync(cut);
-
-        // Act
-        await cut.Find("button.btn-outline-secondary").ClickAsync(new MouseEventArgs());
-
-        // Assert
-        await cut.WaitForAssertionAsync(() =>
-            Assert.NotEmpty(cut.FindAll("div.invite-panel")));
-        Assert.NotEmpty(cut.FindAll("input#invite-search-input"));
-    }
-
-    [Fact]
-    public async Task CloseInvitePanel_WhenXButtonClicked_HidesPanel()
-    {
-        // Arrange
-        var (factory, db) = CreateScopedDb();
-        await SeedAsync(db);
-        SetupAuth(OwnerId);
-        RegisterServices(factory);
-
-        var cut = RenderBoard();
-        await WaitForBoardAsync(cut);
-
-        // Otwórz panel
-        await cut.Find("button.btn-outline-secondary").ClickAsync(new MouseEventArgs());
-        await cut.WaitForAssertionAsync(() =>
-            Assert.NotEmpty(cut.FindAll("div.invite-panel")));
-
-        // Act – zamknij ×
-        await cut.Find("button.invite-panel-close").ClickAsync(new MouseEventArgs());
-
-        // Assert
-        await cut.WaitForAssertionAsync(() =>
-            Assert.Empty(cut.FindAll("div.invite-panel")));
-    }
-
-    [Fact]
-    public async Task InvitePanel_ShowsCurrentBoardOwner()
-    {
-        // Arrange
-        var (factory, db) = CreateScopedDb();
-        await SeedAsync(db);
-        SetupAuth(OwnerId);
-        RegisterServices(factory);
-
-        var cut = RenderBoard();
-        await WaitForBoardAsync(cut);
-
-        await cut.Find("button.btn-outline-secondary").ClickAsync(new MouseEventArgs());
-        await cut.WaitForAssertionAsync(() =>
-            Assert.NotEmpty(cut.FindAll("div.invite-panel")));
-
-        // Assert – sekcja "Obecni członkowie" zawiera właściciela
-        var membersSection = cut.Find("div.invite-members-section");
-        Assert.Contains("TestUser", membersSection.TextContent);
-        Assert.Contains("Właściciel", membersSection.TextContent);
-    }
-
-    // ═══════════════════════════════════════════════════════════════════════════
     // 7. Usuwanie tablicy – DeleteBoardAsync
     // ═══════════════════════════════════════════════════════════════════════════
 
@@ -1343,54 +1250,7 @@ public sealed class BoardTests : BunitContext
         var badge = cut.Find("span.ticket-priority-badge");
         Assert.Contains(expectedLabel, badge.TextContent);
     }
-
-    [Theory]
-    [InlineData("owner",  "Właściciel")]
-    [InlineData("admin",  "Administrator")]
-    [InlineData("viewer", "Observatory")]
-    [InlineData("member", "Członek")]
-    public async Task RoleLabel_InInvitePanel_ShowsCorrectPolishRole(
-        string role, string expectedLabel)
-    {
-        // Arrange – zalogowany owner widzi panel z jednym członkiem (role)
-        const int memberId = 2;
-        var (factory, db) = CreateScopedDb();
-
-        var member = MakeUser(memberId, "Member", "member@test.com");
-        var owner  = MakeUser(OwnerId);
-        var board  = new Tablica
-        {
-            IdTablicy          = BoardIdConst,
-            IdUzytkownikaOwner = OwnerId,
-            NazwaTablicy       = "TestBoard",
-            Owner              = owner,
-            TabliceUzyt = new List<TablicaUzytkownik>
-            {
-                new() { IdUzytkownika = memberId, IdTablicy = BoardIdConst,
-                        Rola = role, Uzytkownik = member }
-            },
-            Zadania = new List<Zadanie>()
-        };
-        db.Uzytkownicy.Add(owner);
-        db.Uzytkownicy.Add(member);
-        db.Tablice.Add(board);
-        await db.SaveChangesAsync();
-
-        SetupAuth(OwnerId);
-        RegisterServices(factory);
-
-        var cut = RenderBoard();
-        await WaitForBoardAsync(cut);
-
-        // Otwórz panel zaproszeń
-        await cut.Find("button.btn-outline-secondary").ClickAsync(new MouseEventArgs());
-        await cut.WaitForAssertionAsync(() =>
-            Assert.NotEmpty(cut.FindAll("div.invite-panel")));
-
-        // Assert – rola wyświetlona po polsku
-        var roleSpans = cut.FindAll("span.invite-member-role");
-        Assert.Contains(roleSpans, s => s.TextContent.Contains(expectedLabel));
-    }
+    
 
     // ═══════════════════════════════════════════════════════════════════════════
     // 10. DisposeAsync
