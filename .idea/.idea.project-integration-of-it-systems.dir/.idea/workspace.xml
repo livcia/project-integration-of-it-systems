@@ -17,8 +17,6 @@
   <component name="ChangeListManager">
     <list default="true" id="5efbd7f4-79f0-4a64-a45e-070c8a06e350" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/.idea.project-integration-of-it-systems.dir/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/.idea.project-integration-of-it-systems.dir/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Folder.DotSettings.user" beforeDir="false" afterPath="$PROJECT_DIR$/Folder.DotSettings.user" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/jira.Tests/jira.Tests.csproj" beforeDir="false" afterPath="$PROJECT_DIR$/jira.Tests/jira.Tests.csproj" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -216,7 +214,7 @@
       <workItem from="1781295647748" duration="381000" />
       <workItem from="1781296095040" duration="2608000" />
       <workItem from="1781358099575" duration="5248000" />
-      <workItem from="1781375896267" duration="6320000" />
+      <workItem from="1781375896267" duration="7662000" />
     </task>
     <servers />
   </component>
@@ -224,10 +222,10 @@
     <option name="version" value="3" />
   </component>
   <component name="UnitTestsCoverage.Settings">
-    <option name="coveragePercentColumnWidth" value="66" />
+    <option name="coveragePercentColumnWidth" value="65" />
     <option name="sortOrder" value="DESCENDING" />
     <option name="sortedColumn" value="1" />
-    <option name="symbolColumnWidth" value="241" />
+    <option name="symbolColumnWidth" value="236" />
     <coverage-tree-state>
       <expand>
         <path>
@@ -250,7 +248,15 @@
           <item name="Total 73% 1140/4297" type="8b8fad3a:RiderDotCoverCoverageTreeNode" />
           <item name="jira 39% 1111/1822" type="8b8fad3a:RiderDotCoverCoverageTreeNode" />
           <item name="jira 42% 991/1702" type="8b8fad3a:RiderDotCoverCoverageTreeNode" />
-          <item name="Services 81% 10/54" type="8b8fad3a:RiderDotCoverCoverageTreeNode" />
+          <item name="Components 53% 539/1143" type="8b8fad3a:RiderDotCoverCoverageTreeNode" />
+        </path>
+        <path>
+          <item name="rootNode" type="c53c71d1:RiderDotCoverCoverageTreeModel$RootNode" />
+          <item name="Total 73% 1140/4297" type="8b8fad3a:RiderDotCoverCoverageTreeNode" />
+          <item name="jira 39% 1111/1822" type="8b8fad3a:RiderDotCoverCoverageTreeNode" />
+          <item name="jira 42% 991/1702" type="8b8fad3a:RiderDotCoverCoverageTreeNode" />
+          <item name="Components 53% 539/1143" type="8b8fad3a:RiderDotCoverCoverageTreeNode" />
+          <item name="Pages 55% 439/975" type="8b8fad3a:RiderDotCoverCoverageTreeNode" />
         </path>
       </expand>
       <select />

@@ -1347,7 +1347,7 @@ public sealed class BoardTests : BunitContext
     [Theory]
     [InlineData("owner",  "Właściciel")]
     [InlineData("admin",  "Administrator")]
-    [InlineData("viewer", "Obserwator")]
+    [InlineData("viewer", "Observatory")]
     [InlineData("member", "Członek")]
     public async Task RoleLabel_InInvitePanel_ShowsCorrectPolishRole(
         string role, string expectedLabel)
