@@ -1,0 +1,68 @@
+/* Widget pogodowy — jasny styl pasujący do białego headera */
+.weather-widget {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.35rem 0.85rem;
+    border-radius: 20px;
+    background: #f0f4ff;
+    border: 1px solid #dde1e7;
+    cursor: default;
+    transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+    .weather-widget:hover {
+        background: #e8f0fe;
+        border-color: #2684FF;
+    }
+
+/* Emoji — nieco większe dla widoczności */
+.weather-emoji {
+    font-size: 1.25rem;
+    line-height: 1;
+    flex-shrink: 0;
+}
+
+/* Dwie linie tekstu obok emoji */
+.weather-text {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.2;
+}
+
+.weather-temp {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: #172B4D;
+    white-space: nowrap;
+}
+
+.weather-desc {
+    font-size: 0.72rem;
+    font-weight: 400;
+    color: #44546f;
+    white-space: nowrap;
+}
+
+/* Stan ładowania */
+.weather-spinner {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    border: 2px solid #dde1e7;
+    border-top-color: #2684FF;
+    border-radius: 50%;
+    animation: weather-spin 0.8s linear infinite;
+    margin: 0 0.25rem;
+}
+
+@keyframes weather-spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Stan błędu */
+.weather-unavailable {
+    font-size: 0.8rem;
+    color: #44546f;
+    opacity: 0.7;
+}

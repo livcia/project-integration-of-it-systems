@@ -97,6 +97,267 @@
     transform: translateY(-1px);
 }
 
+/* ── Members avatar strip ────────────────────── */
+.members-strip {
+    display: flex;
+    align-items: center;
+    position: relative;
+}
+
+.member-avatar-chip {
+    width: 32px;
+    height: 32px;
+    min-width: 32px;
+    border-radius: 50%;
+    border: 2px solid #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: 0.78rem;
+    font-weight: 700;
+    overflow: visible;
+    cursor: default;
+    margin-left: -8px;
+    position: relative;
+    transition: transform 0.15s, box-shadow 0.15s;
+    flex-shrink: 0;
+    box-shadow: 0 1px 4px rgba(9,30,66,0.18);
+}
+
+.member-avatar-chip:first-child {
+    margin-left: 0;
+}
+
+.member-avatar-chip:hover {
+    transform: translateY(-3px) scale(1.12);
+    box-shadow: 0 4px 12px rgba(9,30,66,0.22);
+    z-index: 20 !important;
+}
+
+.member-avatar-chip-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
+}
+
+/* Tooltip on hover */
+.member-avatar-tooltip {
+    display: none;
+    position: absolute;
+    bottom: calc(100% + 7px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: #172b4d;
+    color: #fff;
+    font-size: 0.72rem;
+    font-weight: 600;
+    padding: 0.3rem 0.65rem;
+    border-radius: 6px;
+    white-space: nowrap;
+    pointer-events: none;
+    box-shadow: 0 2px 8px rgba(9,30,66,0.22);
+    z-index: 100;
+}
+
+.member-avatar-tooltip::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 4px solid transparent;
+    border-top-color: #172b4d;
+}
+
+.member-avatar-chip:hover .member-avatar-tooltip {
+    display: block;
+}
+
+/* Large variant (popup) */
+.member-avatar-chip--lg {
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
+    font-size: 0.85rem;
+    margin-left: 0;
+    cursor: default;
+    flex-shrink: 0;
+}
+
+/* "... more" button */
+.member-more-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 2px solid #fff;
+    background: #e0e6f0;
+    color: #172b4d;
+    font-size: 0.72rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    margin-left: -8px;
+    box-shadow: 0 1px 4px rgba(9,30,66,0.15);
+    transition: background 0.15s, transform 0.15s, box-shadow 0.15s;
+    flex-shrink: 0;
+}
+
+.member-more-btn:hover {
+    background: #ccd6f0;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(9,30,66,0.18);
+}
+
+/* "+" invite chip */
+.member-invite-chip {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 2px dashed #2684ff;
+    background: #e6effc;
+    color: #2684ff;
+    font-size: 1.1rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    margin-left: -8px;
+    box-shadow: 0 1px 4px rgba(9,30,66,0.1);
+    transition: background 0.15s, transform 0.15s;
+    flex-shrink: 0;
+    line-height: 1;
+}
+
+.member-invite-chip:hover {
+    background: #cce0ff;
+    transform: translateY(-2px);
+}
+
+/* ── Members popup ────────────────────────────── */
+.members-popup-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 1040;
+}
+
+.members-popup {
+    position: absolute;
+    top: calc(100% + 10px);
+    right: 0;
+    min-width: 260px;
+    max-width: 320px;
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(9,30,66,0.22), 0 2px 8px rgba(9,30,66,0.10);
+    z-index: 1050;
+    animation: membersPopupIn 0.18s cubic-bezier(0.22,1,0.36,1);
+    overflow: hidden;
+}
+
+@@keyframes membersPopupIn {
+    from { opacity: 0; transform: translateY(-8px) scale(0.96); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.members-popup-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.85rem 1rem 0.6rem;
+    border-bottom: 1px solid #ebecf0;
+}
+
+.members-popup-header span {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: #172b4d;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.members-popup-close {
+    background: none;
+    border: none;
+    color: #6b778c;
+    font-size: 0.95rem;
+    cursor: pointer;
+    padding: 0.15rem 0.45rem;
+    border-radius: 4px;
+    line-height: 1;
+    transition: background 0.12s, color 0.12s;
+}
+
+.members-popup-close:hover { background: #ebecf0; color: #172b4d; }
+
+.members-popup-list {
+    list-style: none;
+    margin: 0;
+    padding: 0.5rem 0;
+    max-height: 280px;
+    overflow-y: auto;
+}
+
+.members-popup-item {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    padding: 0.5rem 1rem;
+    transition: background 0.1s;
+}
+
+.members-popup-item:hover { background: #f4f5f7; }
+
+.members-popup-info {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    flex: 1;
+}
+
+.members-popup-name {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #172b4d;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.members-popup-role {
+    margin-top: 2px;
+    font-size: 0.7rem;
+    align-self: flex-start;
+}
+
+.members-popup-footer {
+    padding: 0.65rem 1rem;
+    border-top: 1px solid #ebecf0;
+}
+
+.members-popup-invite-btn {
+    width: 100%;
+    padding: 0.5rem 1rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #0052cc;
+    background: #e6effc;
+    border: 1.5px solid #2684ff;
+    border-radius: 7px;
+    cursor: pointer;
+    transition: background 0.15s, transform 0.12s;
+    text-align: center;
+}
+
+.members-popup-invite-btn:hover {
+    background: #cce0ff;
+    transform: translateY(-1px);
+}
+
 /* ── Delete confirm overlay ──────────────────── */
 .board-delete-overlay {
     position: fixed;
