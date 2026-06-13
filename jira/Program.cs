@@ -6,6 +6,8 @@ using jira.Services;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.Google;
+using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -26,6 +28,21 @@ var connectionString = ConnectionStringHelper.Build();
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(connectionString));
 
+// ── DataProtection: persist keys to a volume so antiforgery tokens survive restarts ──
+var isInContainer = Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER") == "true"
+                    || Environment.GetEnvironmentVariable("RUNNING_IN_DOCKER") == "true";
+
+var dpBuilder = builder.Services.AddDataProtection()
+    .SetApplicationName("jira-app");
+
+if (isInContainer)
+{
+    // Path must match the Docker volume mount in docker-compose.yml
+    var keysPath = "/app/dataprotection-keys";
+    Directory.CreateDirectory(keysPath);
+    dpBuilder.PersistKeysToFileSystem(new DirectoryInfo(keysPath));
+}
+
 builder.Services
     .AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options =>
@@ -36,6 +53,10 @@ builder.Services
         options.Cookie.Name = "jira.auth";
         options.Cookie.HttpOnly = true;
         options.Cookie.SameSite = SameSiteMode.Lax;
+        // In Docker over plain HTTP we must NOT require Secure flag
+        options.Cookie.SecurePolicy = isInContainer
+            ? CookieSecurePolicy.None
+            : CookieSecurePolicy.SameAsRequest;
         options.ExpireTimeSpan = TimeSpan.FromDays(7);
         options.SlidingExpiration = true;
     })
@@ -81,20 +102,48 @@ builder.Services.AddHttpClient<WeatherService>();
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
+// Allow antiforgery cookie to work over HTTP in Docker
+builder.Services.AddAntiforgery(options =>
+{
+    options.Cookie.Name = "jira.af";
+    options.Cookie.SameSite = SameSiteMode.Lax;
+    options.Cookie.SecurePolicy = isInContainer
+        ? CookieSecurePolicy.None
+        : CookieSecurePolicy.SameAsRequest;
+});
+
 builder.Services.AddControllers();
+builder.Services.AddHealthChecks();
+
+// Configure ForwardedHeaders so the app respects X-Forwarded-Proto from proxies
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    options.KnownIPNetworks.Clear();
+    options.KnownProxies.Clear();
+});
 
 var app = builder.Build();
 
 await ApplyMigrationsAsync(app);
 
+// Must be first in pipeline to correctly interpret forwarded headers from proxies
+app.UseForwardedHeaders();
+
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Error", createScopeForErrors: true);
-    app.UseHsts();
+    if (!isInContainer)
+    {
+        app.UseHsts();
+    }
 }
 
 app.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages: true);
-app.UseHttpsRedirection();
+if (!isInContainer)
+{
+    app.UseHttpsRedirection();
+}
 app.UseStaticFiles();
 app.UseAuthentication();
 app.UseAuthorization();
@@ -206,10 +255,11 @@ app.MapGet("/api/auth/logout", async (HttpContext ctx) =>
     return Results.Redirect("/login");
 });
 
-app.MapStaticAssets();
 app.MapControllers();
+app.MapHealthChecks("/health");
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
+app.MapStaticAssets();
 
 app.Run();
 
