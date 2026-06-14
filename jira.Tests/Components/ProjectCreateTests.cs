@@ -244,6 +244,7 @@ public class ProjectCreateTests : BunitContext
             Assert.EndsWith("/projects", navManager.Uri);
         }
     }
+   
 }
 
 /// <summary>

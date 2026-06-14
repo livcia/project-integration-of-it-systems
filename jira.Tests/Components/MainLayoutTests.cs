@@ -9,16 +9,19 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
+
 using Xunit;
 
 namespace jira.Tests.Components.Layout;
 
 public class MainLayoutTests : TestContext
 {
+    
     private readonly Mock<AuthenticationStateProvider> _authProviderMock;
 
     public MainLayoutTests()
     {
+        
         // 1. Rejestracja serwisów (minimalny zestaw pod bUnit)
         Services.AddSingleton<BoardStateService>(new Mock<BoardStateService>().Object);
         Services.AddAuthorizationCore();
