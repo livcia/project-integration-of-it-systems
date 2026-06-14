@@ -235,5 +235,171 @@ public class TicketCreateTests : BunitContext
         }
     }
 
+    // -----------------------------------------------------------------------
+    // Pomocnik – auth przez Email (NameIdentifier nieparsowany jako int)
+    // -----------------------------------------------------------------------
+
+    private void SetupUserWithEmailFallback(int realDbUserId, string email, string name)
+    {
+        // NameIdentifier celowo nie-int → int.TryParse zwróci false → fallback po Email
+        var claims = new List<Claim>
+        {
+            new Claim(ClaimTypes.Name, name),
+            new Claim(ClaimTypes.NameIdentifier, "not-an-int"),
+            new Claim(ClaimTypes.Email, email)
+        };
+        _authStateProvider.SetAuthenticationState(
+            new AuthenticationState(new ClaimsPrincipal(new ClaimsIdentity(claims, "TestAuth"))));
+    }
+
+    // -----------------------------------------------------------------------
+    // HandleSubmit – brak assignee: zadanie zapisane z null, e-mail NIE wysłany
+    // -----------------------------------------------------------------------
+
+    [Fact]
+    public async Task HandleSubmit_WithoutAssignee_SavesTaskWithNullAssigneeAndDoesNotSendEmail()
+    {
+        const int testBoardId = 50;
+        SetupUser(10, "pm@jira.pl", "Manager");
+        await SeedTestDataAsync(testBoardId, "Projekt Beta", ownerId: 10, memberId: 20);
+
+        var navManager = Services.GetRequiredService<NavigationManager>();
+        navManager.NavigateTo($"http://localhost/ticket/new?boardId={testBoardId}");
+
+        var cut = Render<TicketCreate>();
+        cut.WaitForState(() => cut.FindAll(".cb-loading").Count == 0, TimeSpan.FromSeconds(3));
+
+        // Act – wypełniamy tytuł, ale NIE zmieniamy assignee (zostaje "— Nieprzypisane —")
+        cut.Find("#ticket-name").Change("Zadanie bez przypisania");
+        cut.Find("form").Submit();
+
+        // Assert – zadanie zapisane w DB z IdUzytkownikaPrzypisanego == null
+        await Task.Delay(200); // poczekaj na async HandleSubmit
+        using (var dbCheck = new AppDbContext(_dbOptions))
+        {
+            var savedTask = await dbCheck.Set<Zadanie>()
+                .FirstOrDefaultAsync(z => z.IdTablicy == testBoardId);
+            Assert.NotNull(savedTask);
+            Assert.Null(savedTask!.IdUzytkownikaPrzypisanego);
+        }
+
+        // Assert – serwis e-mail NIE został wywołany
+        _emailServiceMock.Verify(
+            x => x.SendAssignmentNotificationAsync(
+                It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(),
+                It.IsAny<string>(), It.IsAny<int>(), It.IsAny<string?>()),
+            Times.Never);
+    }
+
+    // (test HandleSubmit_WhenDbThrowsException przeniesiony do TicketCreateDbErrorTests poniżej)
+
+    // -----------------------------------------------------------------------
+    // OnInitializedAsync – fallback po Email: komponent ładuje dane poprawnie
+    // -----------------------------------------------------------------------
+
+    [Fact]
+    public async Task OnInitializedAsync_WithEmailClaimFallback_LoadsBoardUsersSuccessfully()
+    {
+        const int testBoardId = 70;
+        const string ownerEmail = "emailowner@jira.pl";
+
+        // Arrange – seed: owner z ID=30 (zostanie odnaleziony przez Email)
+        using (var seedCtx = new AppDbContext(_dbOptions))
+        {
+            var owner = new Uzytkownik
+            {
+                IdUzytkownika    = 30,
+                Email            = ownerEmail,
+                NazwaUzytkownika = "Email Owner"
+            };
+            var member = new Uzytkownik
+            {
+                IdUzytkownika    = 31,
+                Email            = "member@jira.pl",
+                NazwaUzytkownika = "Członek"
+            };
+            var board = new Tablica
+            {
+                IdTablicy          = testBoardId,
+                NazwaTablicy       = "Email Fallback Board",
+                IdUzytkownikaOwner = 30,
+                Owner              = owner,
+            };
+            var boardMember = new TablicaUzytkownik
+            {
+                IdTablicy    = testBoardId,
+                IdUzytkownika = 31,
+                Uzytkownik   = member
+            };
+            seedCtx.Uzytkownicy.AddRange(owner, member);
+            seedCtx.Tablice.Add(board);
+            seedCtx.Set<TablicaUzytkownik>().Add(boardMember);
+            await seedCtx.SaveChangesAsync();
+        }
+
+        // NameIdentifier = "not-an-int" → int.TryParse false → fallback na Email
+        SetupUserWithEmailFallback(30, ownerEmail, "Email Owner");
+
+        var navManager = Services.GetRequiredService<NavigationManager>();
+        navManager.NavigateTo($"http://localhost/ticket/new?boardId={testBoardId}");
+
+        // Act
+        var cut = Render<TicketCreate>();
+
+        // Assert – komponent załadował dane (brak spinnera, widoczna nazwa tablicy)
+        cut.WaitForState(() => cut.FindAll(".cb-loading").Count == 0, TimeSpan.FromSeconds(3));
+
+        var subtitle = cut.Find(".create-board-subtitle strong");
+        Assert.Equal("Email Fallback Board", subtitle.TextContent);
+
+        // Lista użytkowników powinna zawierać: "— Nieprzypisane —" + owner + member = 3 opcje
+        var options = cut.FindAll("#ticket-assignee option");
+        Assert.Equal(3, options.Count);
+    }
+
     // Stara metoda Dispose nie jest już wymagana, bUnit posprząta kontenery DI automatycznie
+}
+
+// =============================================================================
+// Oddzielna klasa testowa – blok catch w HandleSubmit (wymaga mocka ScopeFactory
+// skonfigurowanego PRZED pierwszym renderem, co jest wymaganiem bUnit).
+// =============================================================================
+
+public class TicketCreateDbErrorTests : BunitContext
+{
+    private readonly FakeAuthenticationStateProvider _authStateProvider;
+    private readonly Mock<IEmailService> _emailServiceMock;
+    private readonly Mock<AppDbContext> _failingDbMock;
+
+    public TicketCreateDbErrorTests()
+    {
+        _authStateProvider = new FakeAuthenticationStateProvider();
+        _emailServiceMock  = new Mock<IEmailService>();
+
+        // Mock DbContext rzucający wyjątek w SaveChangesAsync
+        _failingDbMock = new Mock<AppDbContext>(
+            new DbContextOptionsBuilder<AppDbContext>()
+                .UseInMemoryDatabase($"failing_{Guid.NewGuid()}")
+                .Options);
+        _failingDbMock
+            .Setup(db => db.SaveChangesAsync(It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new Exception("Symulowany błąd bazy danych"));
+
+        // Używamy prawdziwego ServiceCollection jako wewnętrznego kontenera scope'u.
+        // GetRequiredService<T> w .NET 10 sprawdza ISupportRequiredService –
+        // prawdziwy ServiceProvider implementuje ten interfejs, Mock<IServiceProvider> nie.
+        var innerSc = new ServiceCollection();
+        innerSc.AddSingleton<AppDbContext>(_failingDbMock.Object);
+        var innerSp = innerSc.BuildServiceProvider();
+
+        var scopeFactoryMock = new Mock<IServiceScopeFactory>();
+        scopeFactoryMock
+            .Setup(f => f.CreateScope())
+            .Returns(() => innerSp.CreateScope());
+
+        // Rejestrujemy WSZYSTKIE usługi PRZED pierwszym renderem
+        Services.AddSingleton<IServiceScopeFactory>(scopeFactoryMock.Object);
+        Services.AddSingleton<AuthenticationStateProvider>(_authStateProvider);
+        Services.AddSingleton(_emailServiceMock.Object);
+    }
 }

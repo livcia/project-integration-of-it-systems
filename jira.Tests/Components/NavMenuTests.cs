@@ -191,5 +191,111 @@ public class NavMenuTests : BunitContext
             Assert.DoesNotContain("Obca", cut.Markup);
         });
     }
-    
+
+    // -------------------------------------------------------------------------
+    // Pomocnik – auth przez Email (bez parsowanego NameIdentifier)
+    // -------------------------------------------------------------------------
+
+    private void SetupAuthWithEmail(string email)
+    {
+        var claims = new List<Claim>
+        {
+            // NameIdentifier celowo nieparsowany (nie-int) → fallback na Email
+            new Claim(ClaimTypes.NameIdentifier, "not-an-int"),
+            new Claim(ClaimTypes.Email, email),
+        };
+        var identity = new ClaimsIdentity(claims, "TestAuthType");
+        var authState = new AuthenticationState(new ClaimsPrincipal(identity));
+
+        var authProviderMock = new Mock<AuthenticationStateProvider>();
+        authProviderMock
+            .Setup(x => x.GetAuthenticationStateAsync())
+            .ReturnsAsync(authState);
+
+        Services.AddScoped<AuthenticationStateProvider>(_ => authProviderMock.Object);
+    }
+
+    // -------------------------------------------------------------------------
+    // OnLocationChanged – nawigacja po renderze aktualizuje klasę active
+    // -------------------------------------------------------------------------
+
+    [Fact]
+    public async Task OnLocationChanged_AfterNavigation_UpdatesActiveClass()
+    {
+        // Arrange – tablica o ID=7, user ID=1
+        var db = CreateDb();
+        db.Tablice.Add(new Tablica
+        {
+            IdTablicy          = 7,
+            NazwaTablicy       = "Navigation Board",
+            IdUzytkownikaOwner = 1,
+            TabliceUzyt        = new List<TablicaUzytkownik>()
+        });
+        await db.SaveChangesAsync();
+
+        SetupAuth(1);
+
+        // Startujemy na stronie głównej – link /board/7 nie jest aktywny
+        var nav = Services.GetRequiredService<NavigationManager>();
+        nav.NavigateTo("/");
+
+        var cut = Render<NavMenu>();
+
+        // Poczekaj, aż tablica się załaduje (DOM zawiera link)
+        cut.WaitForAssertion(() =>
+            Assert.NotNull(cut.Find("a[href='/board/7']")));
+
+        // Link nie powinien być jeszcze aktywny
+        var linkBefore = cut.Find("a[href='/board/7']");
+        Assert.DoesNotContain("active", linkBefore.ClassName ?? "");
+
+        // Act – nawigacja PO renderze: wyzwala OnLocationChanged
+        nav.NavigateTo("/board/7");
+
+        // Assert – po przerenderowaniu link ma klasę active
+        cut.WaitForAssertion(() =>
+            Assert.Contains("active",
+                cut.Find("a[href='/board/7']").ClassName ?? ""));
+    }
+
+    // -------------------------------------------------------------------------
+    // LoadBoardsAsync – fallback po Email: tablica wyświetlona po Email claim
+    // -------------------------------------------------------------------------
+
+    [Fact]
+    public async Task LoadBoardsAsync_WithEmailClaimFallback_LoadsBoardsSuccessfully()
+    {
+        // Arrange – tworzymy użytkownika w DB i przypisaną do niego tablicę
+        const string userEmail = "fallback@example.com";
+
+        var db = CreateDb();
+
+        var dbUser = new Uzytkownik
+        {
+            IdUzytkownika   = 42,
+            Email           = userEmail,
+            NazwaUzytkownika = "FallbackUser",
+        };
+        db.Uzytkownicy.Add(dbUser);
+
+        db.Tablice.Add(new Tablica
+        {
+            IdTablicy          = 20,
+            NazwaTablicy       = "Email Fallback Board",
+            IdUzytkownikaOwner = 42,
+            TabliceUzyt        = new List<TablicaUzytkownik>()
+        });
+        await db.SaveChangesAsync();
+
+        // Auth: NameIdentifier = "not-an-int" → int.TryParse zwraca false
+        //       Email = userEmail → ścieżka fallback w LoadBoardsAsync
+        SetupAuthWithEmail(userEmail);
+
+        // Act
+        var cut = Render<NavMenu>();
+
+        // Assert – tablica przypisana przez Email powinna być widoczna
+        cut.WaitForAssertion(() =>
+            Assert.Contains("Email Fallback Board", cut.Markup));
+    }
 }
