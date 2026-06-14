@@ -1,0 +1,34 @@
+@using jira.Services
+@inject WeatherService WeatherSvc
+
+<div class="weather-widget">
+    @if (!loaded)
+    {
+        <span class="weather-spinner"></span>
+    }
+    else if (weather == null)
+    {
+        <span class="weather-unavailable">🌡️ Brak danych</span>
+    }
+    else
+    {
+        var (desc, emoji) = WeatherService.GetWeatherDescription(weather.WeatherCode);
+
+        <span class="weather-emoji">@emoji</span>
+        <div class="weather-text">
+            <span class="weather-temp">@weather.Temperature.ToString("F1")°C</span>
+            <span class="weather-desc">@desc</span>
+        </div>
+    }
+</div>
+
+@code {
+    private CurrentWeather? weather;
+    private bool loaded = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        weather = await WeatherSvc.GetCurrentWeatherAsync();
+        loaded = true;
+    }
+}

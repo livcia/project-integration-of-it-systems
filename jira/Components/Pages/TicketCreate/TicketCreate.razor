@@ -1,0 +1,306 @@
+@page "/ticket/new"
+@attribute [Authorize]
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.EntityFrameworkCore
+@using System.Security.Claims
+@using jira.Data
+@using jira.DbModels
+@inject IServiceScopeFactory ScopeFactory
+@inject AuthenticationStateProvider AuthStateProvider
+@inject NavigationManager NavManager
+@inject jira.Services.IEmailService EmailService
+
+<div class="create-board-wrapper">
+    <div class="create-board-card">
+
+        <!-- ── Header ── -->
+        <div class="create-board-header">
+            <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 40 40">
+                <defs>
+                    <linearGradient id="tc-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" style="stop-color:#2684FF;stop-opacity:1" />
+                        <stop offset="100%" style="stop-color:#0052CC;stop-opacity:1" />
+                    </linearGradient>
+                </defs>
+                <rect width="40" height="40" rx="10" fill="url(#tc-grad)" />
+                <path d="M12 14h16v3H12zm0 5h10v3H12zm0 5h13v3H12z" fill="white" />
+            </svg>
+            <div>
+                <h1 class="create-board-title">Nowe zadanie</h1>
+                @if (boardName != null)
+                {
+                    <p class="create-board-subtitle">Tablica: <strong>@boardName</strong></p>
+                }
+                else
+                {
+                    <p class="create-board-subtitle">Wypełnij formularz, aby dodać zadanie</p>
+                }
+            </div>
+        </div>
+
+        <!-- ── Status banners ── -->
+        @if (saveSuccess)
+        {
+            <div class="cb-alert-success">
+                <span>✅</span>
+                <span>Zadanie <strong>„@savedTaskTitle"</strong> zostało pomyślnie dodane do tablicy.</span>
+            </div>
+        }
+        @if (!string.IsNullOrEmpty(saveError))
+        {
+            <div class="cb-alert-error">
+                <span>⚠️</span> @saveError
+            </div>
+        }
+
+        @if (isLoading)
+        {
+            <div class="cb-loading">
+                <span class="cb-spinner cb-spinner--dark"></span>
+                <span>Ładowanie danych tablicy...</span>
+            </div>
+        }
+        else if (boardId == null || boardId <= 0)
+        {
+            <div class="cb-alert-error">
+                ⚠️ Brak identyfikatora tablicy. Wróć do tablicy i użyj przycisku „+ Dodaj zadanie".
+            </div>
+        }
+        else
+        {
+            <!-- ── Form ── -->
+            <EditForm Model="model" OnValidSubmit="HandleSubmit">
+                <DataAnnotationsValidator />
+
+                <!-- Tytuł -->
+                <div class="cb-form-group">
+                    <label class="cb-form-label" for="ticket-name">
+                        Tytuł zadania <span class="cb-required">*</span>
+                    </label>
+                    <InputText id="ticket-name"
+                               class="@($"cb-input {(titleTouched && string.IsNullOrWhiteSpace(model.TytulZadania) ? "cb-input--error" : "")}")"
+                               placeholder="Wpisz tytuł zadania..."
+                               @bind-Value="model.TytulZadania"
+                               @onblur="() => titleTouched = true" />
+                    @if (titleTouched && string.IsNullOrWhiteSpace(model.TytulZadania))
+                    {
+                        <span class="cb-field-error">Tytuł jest wymagany.</span>
+                    }
+                </div>
+
+                <!-- Opis -->
+                <div class="cb-form-group">
+                    <label class="cb-form-label" for="ticket-desc">
+                        Opis zadania <span class="cb-optional">(opcjonalne)</span>
+                    </label>
+                    <InputTextArea id="ticket-desc"
+                                   class="cb-input cb-textarea"
+                                   @bind-Value="model.OpisZadania"
+                                   placeholder="Opisz szczegółowo, co trzeba zrobić..." />
+                </div>
+
+                <!-- Priorytet + Kolumna -->
+                <div class="cb-form-row">
+                    <div class="cb-form-group">
+                        <label class="cb-form-label" for="ticket-priority">Priorytet</label>
+                        <InputSelect id="ticket-priority" class="cb-input cb-select" @bind-Value="model.Priorytet">
+                            <option value="wysoki">🔴 Wysoki</option>
+                            <option value="sredni">🟡 Średni</option>
+                            <option value="niski">🟢 Niski</option>
+                        </InputSelect>
+                    </div>
+                    <div class="cb-form-group">
+                        <label class="cb-form-label" for="ticket-column">Kolumna startowa</label>
+                        <InputSelect id="ticket-column" class="cb-input cb-select" @bind-Value="model.KolumnaTablicy">
+                            <option value="Todo">Do zrobienia</option>
+                            <option value="In Progress">W trakcie</option>
+                            <option value="In Review">W weryfikacji</option>
+                            <option value="Done">Zakończone</option>
+                        </InputSelect>
+                    </div>
+                </div>
+
+                <!-- Przypisane do -->
+                <div class="cb-form-group">
+                    <label class="cb-form-label" for="ticket-assignee">Przypisane do</label>
+                    <InputSelect id="ticket-assignee" class="cb-input cb-select" @bind-Value="model.IdUzytkownikaPrzypisanego">
+                        <option value="">— Nieprzypisane —</option>
+                        @foreach (var u in boardUsers)
+                        {
+                            <option value="@u.IdUzytkownika">@u.NazwaUzytkownika (@u.Email)</option>
+                        }
+                    </InputSelect>
+                </div>
+
+                <!-- Actions -->
+                <div class="cb-form-actions">
+                    <a class="cb-btn-cancel" href="@BackUrl">Anuluj</a>
+                    <button type="submit" class="cb-btn-submit" disabled="@isSaving">
+                        @if (isSaving)
+                        {
+                            <span class="cb-spinner"></span>
+                            <span>Zapisywanie...</span>
+                        }
+                        else
+                        {
+                            <span>✓ Dodaj zadanie</span>
+                        }
+                    </button>
+                </div>
+            </EditForm>
+        }
+
+    </div>
+</div>
+
+
+@code {
+    // ── Query param ─────────────────────────────────
+    [SupplyParameterFromQuery(Name = "boardId")]
+    public int? boardId { get; set; }
+
+    // ── State ────────────────────────────────────────
+    private TicketFormModel model = new();
+    private string? boardName;
+    private string BackUrl => boardId.HasValue ? $"/board/{boardId}" : "/projects";
+
+    private List<Uzytkownik> boardUsers = new();
+    private int currentUserId;
+
+    private bool isLoading = true;
+    private bool isSaving;
+    private bool saveSuccess;
+    private string? saveError;
+    private string? savedTaskTitle;
+    private bool titleTouched;
+
+    // ── Lifecycle ────────────────────────────────────
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        // Resolve current user id
+        var idClaim = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (!int.TryParse(idClaim, out currentUserId) || currentUserId <= 0)
+        {
+            var email = user.FindFirst(ClaimTypes.Email)?.Value;
+            if (!string.IsNullOrEmpty(email))
+            {
+                using var ls = ScopeFactory.CreateScope();
+                var ldb = ls.ServiceProvider.GetRequiredService<AppDbContext>();
+                currentUserId = (await ldb.Uzytkownicy.FirstOrDefaultAsync(u => u.Email == email))?.IdUzytkownika ?? 0;
+            }
+        }
+
+        if (boardId.HasValue && boardId.Value > 0)
+        {
+            using var scope = ScopeFactory.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+            // Load board name + members for assignee dropdown
+            var board = await db.Tablice
+                .Include(t => t.Owner)
+                .Include(t => t.TabliceUzyt).ThenInclude(tu => tu.Uzytkownik)
+                .FirstOrDefaultAsync(t => t.IdTablicy == boardId.Value);
+
+            if (board != null)
+            {
+                boardName = board.NazwaTablicy;
+
+                // Owner + all members
+                var users = new List<Uzytkownik>();
+                if (board.Owner != null) users.Add(board.Owner);
+                foreach (var tu in board.TabliceUzyt)
+                {
+                    if (tu.Uzytkownik != null && users.All(u => u.IdUzytkownika != tu.Uzytkownik.IdUzytkownika))
+                        users.Add(tu.Uzytkownik);
+                }
+                boardUsers = users;
+            }
+        }
+
+        // Default form values
+        model.Priorytet = "sredni";
+        model.KolumnaTablicy = "Todo";
+
+        isLoading = false;
+    }
+
+    // ── Submit ───────────────────────────────────────
+    private async Task HandleSubmit()
+    {
+        if (string.IsNullOrWhiteSpace(model.TytulZadania))
+        {
+            titleTouched = true;
+            return;
+        }
+
+        isSaving = true;
+        saveSuccess = false;
+        saveError = null;
+
+        try
+        {
+            using var scope = ScopeFactory.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+            var zadanie = new Zadanie
+            {
+                TytulZadania               = model.TytulZadania.Trim(),
+                OpisZadania                = string.IsNullOrWhiteSpace(model.OpisZadania) ? null : model.OpisZadania.Trim(),
+                Priorytet                  = model.Priorytet,
+                Status                     = model.KolumnaTablicy,
+                KolumnaTablicy             = model.KolumnaTablicy,
+                IdTablicy                  = boardId!.Value,
+                IdUzytkownikaTworcyZadania = currentUserId,
+                IdUzytkownikaPrzypisanego  = model.IdUzytkownikaPrzypisanego > 0 ? model.IdUzytkownikaPrzypisanego : null,
+                DataStworzenia             = DateTime.UtcNow,
+            };
+
+            db.Zadania.Add(zadanie);
+            await db.SaveChangesAsync();
+
+            savedTaskTitle = zadanie.TytulZadania;
+            saveSuccess = true;
+
+            // Send assignment notification email if an assignee was selected
+            if (zadanie.IdUzytkownikaPrzypisanego.HasValue)
+            {
+                var assignee = boardUsers.FirstOrDefault(u => u.IdUzytkownika == zadanie.IdUzytkownikaPrzypisanego.Value);
+                if (assignee != null)
+                {
+                    await EmailService.SendAssignmentNotificationAsync(
+                        assignee.Email,
+                        assignee.NazwaUzytkownika,
+                        zadanie.TytulZadania,
+                        boardName ?? "—",
+                        zadanie.IdZadania,
+                        zadanie.OpisZadania);
+                }
+            }
+
+            // Small delay so user sees the success message, then redirect
+            await Task.Delay(1200);
+            NavManager.NavigateTo(BackUrl);
+        }
+        catch (Exception ex)
+        {
+            saveError = $"Nie udało się zapisać zadania: {ex.Message}";
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    // ── Form model ───────────────────────────────────
+    private class TicketFormModel
+    {
+        public string TytulZadania   { get; set; } = "";
+        public string? OpisZadania   { get; set; }
+        public string Priorytet      { get; set; } = "sredni";
+        public string KolumnaTablicy { get; set; } = "Todo";
+        public int IdUzytkownikaPrzypisanego { get; set; }
+    }
+}

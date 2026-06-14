@@ -1,0 +1,1598 @@
+@page "/board"
+@page "/board/{BoardId:int}"
+@attribute [Authorize]
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.EntityFrameworkCore
+@using System.Security.Claims
+@using jira.Components.UI.StatusColumn
+@using jira.Components.UI.TicketCard
+@using jira.Data
+@using jira.DbModels
+@using jira.Services
+@implements IAsyncDisposable
+@inject IServiceScopeFactory ScopeFactory
+@inject AuthenticationStateProvider AuthStateProvider
+@inject NavigationManager NavManager
+@inject BoardStateService BoardState
+@inject jira.Services.IEmailService EmailService
+
+@if (isLoading)
+{
+    <div class="board-loading">
+        <span class="board-spinner"></span>
+        <span>Ładowanie tablicy...</span>
+    </div>
+}
+else if (board == null)
+{
+    <div class="board-not-found">
+        <h3>Tablica nie istnieje lub nie masz do niej dostępu.</h3>
+        <a href="/projects" class="board-back-link">← Wróć do tablic</a>
+    </div>
+}
+else
+{
+    <!-- ── Confirm delete overlay ── -->
+    @if (showDeleteConfirm)
+    {
+        <div class="board-delete-overlay">
+            <div class="board-delete-dialog">
+                <h4>Usuń tablicę</h4>
+                <p>Czy na pewno chcesz usunąć tablicę <strong>@board.NazwaTablicy</strong>?<br />
+                   Wszystkie zadania zostaną trwale usunięte.</p>
+                <div class="board-delete-actions">
+                    <button class="board-delete-cancel" @onclick="() => showDeleteConfirm = false" disabled="@isDeleting">
+                        Anuluj
+                    </button>
+                    <button class="board-delete-confirm" @onclick="DeleteBoardAsync" disabled="@isDeleting">
+                        @if (isDeleting)
+                        {
+                            <span class="board-delete-spinner"></span>
+                            <span>Usuwanie...</span>
+                        }
+                        else
+                        {
+                            <span>🗑 Tak, usuń</span>
+                        }
+                    </button>
+                </div>
+            </div>
+        </div>
+    }
+
+    <!-- ── Board header ── -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div class="board-title-group">
+            @if (!string.IsNullOrEmpty(board.KolorTablicy))
+            {
+                <span class="board-color-dot" style="background:@board.KolorTablicy;"></span>
+            }
+            <h2 class="board-page-title">@board.NazwaTablicy</h2>
+        </div>
+
+        <div class="d-flex gap-2 align-items-center">
+            @if (canDelete)
+            {
+                <button type="button" class="board-btn-delete" @onclick="() => showDeleteConfirm = true">
+                    🗑 Usuń tablicę
+                </button>
+            }
+
+            <!-- ── Members avatars strip ── -->
+            @{
+                var allMembers = GetAllBoardMembersForDisplay();
+                var visibleMembers = allMembers.Take(MaxVisibleAvatars).ToList();
+                var hiddenCount = allMembers.Count - visibleMembers.Count;
+            }
+            <div class="members-strip" id="members-strip-container">
+                @foreach (var (member, index) in visibleMembers.Select((m, i) => (m, i)))
+                {
+                    <div class="member-avatar-chip"
+                         style="background:@GetAvatarColor(member.Name); z-index:@(10 - index);"
+                         title="@member.Name">
+                        @if (!string.IsNullOrEmpty(member.AvatarUrl))
+                        {
+                            <img src="@member.AvatarUrl" alt="@member.Name" class="member-avatar-chip-img" />
+                        }
+                        else
+                        {
+                            @member.Name.Substring(0, 1).ToUpperInvariant()
+                        }
+                        <span class="member-avatar-tooltip">@member.Name</span>
+                    </div>
+                }
+                @if (hiddenCount > 0)
+                {
+                    <button class="member-more-btn" @onclick="ToggleMembersPopup" title="Pokaż wszystkich członków">
+                        +@hiddenCount
+                    </button>
+                }
+                else if (canInvite)
+                {
+                    <button class="member-invite-chip" @onclick="OpenInvitePanel" title="Zaproś do tablicy">
+                        +
+                    </button>
+                }
+
+                @if (showMembersPopup)
+                {
+                    <div class="members-popup-overlay" @onclick="CloseMembersPopup"></div>
+                    <div class="members-popup">
+                        <div class="members-popup-header">
+                            <span>Członkowie tablicy (@allMembers.Count)</span>
+                            <button class="members-popup-close" @onclick="CloseMembersPopup">✕</button>
+                        </div>
+                        <ul class="members-popup-list">
+                            @foreach (var member2 in allMembers)
+                            {
+                                <li class="members-popup-item">
+                                    <div class="member-avatar-chip member-avatar-chip--lg"
+                                         style="background:@GetAvatarColor(member2.Name);">
+                                        @if (!string.IsNullOrEmpty(member2.AvatarUrl))
+                                        {
+                                            <img src="@member2.AvatarUrl" alt="@member2.Name" class="member-avatar-chip-img" />
+                                        }
+                                        else
+                                        {
+                                            @member2.Name.Substring(0, 1).ToUpperInvariant()
+                                        }
+                                    </div>
+                                    <div class="members-popup-info">
+                                        <span class="members-popup-name">
+                                            @member2.Name
+                                            @if (member2.UserId == currentUserId)
+                                            {
+                                                <span class="invite-member-you"> (Ty)</span>
+                                            }
+                                        </span>
+                                        <span class="members-popup-role invite-member-role invite-member-role--@member2.Role">@RoleLabel(member2.Role)</span>
+                                    </div>
+                                </li>
+                            }
+                        </ul>
+                        @if (canInvite)
+                        {
+                            <div class="members-popup-footer">
+                                <button class="members-popup-invite-btn" @onclick="() => { CloseMembersPopup(); OpenInvitePanel(); }">
+                                    👥 Zaproś nowego członka
+                                </button>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+
+            @if (canAddTask)
+            {
+                <a class="btn btn-primary" href="@($"/ticket/new?boardId={board.IdTablicy}")" >+ Dodaj zadanie</a>
+            }
+        </div>
+    </div>
+
+    <!-- ── Kanban columns ── -->
+    <div class="kanban-board">
+        <StatusColumn Title="Do zrobienia (To Do)" ColumnKey="Todo" OnDrop="HandleDrop">
+            @foreach (var task in GetTasksByColumn("Todo"))
+            {
+                var t = task;
+                <TicketCard Task="t" OnClick="OpenTicketModal"
+                            OnDragStart="SetDraggedTask"
+                            OnDragEnd="ClearDraggedTask" />
+            }
+        </StatusColumn>
+        <StatusColumn Title="W trakcie (In Progress)" ColumnKey="In Progress" OnDrop="HandleDrop">
+            @foreach (var task in GetTasksByColumn("In Progress"))
+            {
+                var t = task;
+                <TicketCard Task="t" OnClick="OpenTicketModal"
+                            OnDragStart="SetDraggedTask"
+                            OnDragEnd="ClearDraggedTask" />
+            }
+        </StatusColumn>
+        <StatusColumn Title="W weryfikacji (In Review)" ColumnKey="In Review" OnDrop="HandleDrop">
+            @foreach (var task in GetTasksByColumn("In Review"))
+            {
+                var t = task;
+                <TicketCard Task="t" OnClick="OpenTicketModal"
+                            OnDragStart="SetDraggedTask"
+                            OnDragEnd="ClearDraggedTask" />
+            }
+        </StatusColumn>
+        <StatusColumn Title="Zakończone (Done)" ColumnKey="Done" OnDrop="HandleDrop">
+            @foreach (var task in GetTasksByColumn("Done"))
+            {
+                var t = task;
+                <TicketCard Task="t" OnClick="OpenTicketModal"
+                            OnDragStart="SetDraggedTask"
+                            OnDragEnd="ClearDraggedTask" />
+            }
+        </StatusColumn>
+    </div>
+
+    <!-- ── Invite panel (slide-in) ── -->
+    @if (showInvitePanel)
+    {
+        <div class="invite-overlay" @onclick="CloseInvitePanel">
+            <div class="invite-panel" @onclick:stopPropagation="true">
+                <div class="invite-panel-header">
+                    <h5>👥 Zaproś do tablicy</h5>
+                    <button class="invite-panel-close" @onclick="CloseInvitePanel" title="Zamknij">✕</button>
+                </div>
+
+                <!-- Search -->
+                <div class="invite-search-wrap">
+                    <span class="invite-search-icon">🔍</span>
+                    <input class="invite-search-input"
+                           type="text"
+                           placeholder="Szukaj po nazwie lub e-mailu..."
+                           value="@inviteSearchQuery"
+                           @oninput="OnInviteSearchInput"
+                           autocomplete="off"
+                           id="invite-search-input" />
+                    @if (isInviteSearching)
+                    {
+                        <span class="invite-search-spinner"></span>
+                    }
+                </div>
+
+                <!-- Search results dropdown -->
+                @if (inviteSearchResults.Count > 0 && inviteSelectedUser == null)
+                {
+                    <ul class="invite-results">
+                        @foreach (var u in inviteSearchResults)
+                        {
+                            var usr = u;
+                            <li class="invite-result-item" @onclick="() => SelectInviteUser(usr)">
+                                <div class="invite-result-avatar" style="background: @GetAvatarColor(usr.NazwaUzytkownika)">
+                                    @if (!string.IsNullOrEmpty(usr.AvatarUrl))
+                                    {
+                                        <img src="@usr.AvatarUrl" alt="@usr.NazwaUzytkownika" class="invite-result-avatar-img" />
+                                    }
+                                    else
+                                    {
+                                        @usr.NazwaUzytkownika.Substring(0, 1).ToUpperInvariant()
+                                    }
+                                </div>
+                                <div class="invite-result-info">
+                                    <span class="invite-result-name">@usr.NazwaUzytkownika</span>
+                                    <span class="invite-result-email">@usr.Email</span>
+                                </div>
+                            </li>
+                        }
+                    </ul>
+                }
+                else if (!string.IsNullOrEmpty(inviteSearchQuery) && inviteSearchQuery.Length >= 2
+                         && inviteSearchResults.Count == 0 && !isInviteSearching && inviteSelectedUser == null)
+                {
+                    <div class="invite-no-results">Brak użytkowników pasujących do „@inviteSearchQuery"</div>
+                }
+
+                <!-- Selected user card -->
+                @if (inviteSelectedUser != null)
+                {
+                    <div class="invite-selected-card">
+                        <div class="invite-result-avatar invite-selected-avatar"
+                             style="background: @GetAvatarColor(inviteSelectedUser.NazwaUzytkownika)">
+                            @if (!string.IsNullOrEmpty(inviteSelectedUser.AvatarUrl))
+                            {
+                                <img src="@inviteSelectedUser.AvatarUrl" alt="@inviteSelectedUser.NazwaUzytkownika" class="invite-result-avatar-img" />
+                            }
+                            else
+                            {
+                                @inviteSelectedUser.NazwaUzytkownika.Substring(0, 1).ToUpperInvariant()
+                            }
+                        </div>
+                        <div class="invite-selected-info">
+                            <strong>@inviteSelectedUser.NazwaUzytkownika</strong>
+                            <span>@inviteSelectedUser.Email</span>
+                        </div>
+                        <button class="invite-deselect" @onclick="ClearInviteSelection" title="Zmień">✕</button>
+                    </div>
+
+                    <div class="invite-role-wrap">
+                        <label class="invite-role-label">Rola w tablicy</label>
+                        <div class="invite-role-options">
+                            <label class="@(inviteSelectedRole == "member" ? "invite-role-option invite-role-option--active" : "invite-role-option")">
+                                <input type="radio" name="invite-role" value="member"
+                                       checked="@(inviteSelectedRole == "member")"
+                                       @onchange="SetRoleMember" />
+                                <span class="invite-role-icon">✏️</span>
+                                <span>
+                                    <strong>Członek</strong>
+                                    <small>Może edytować zadania</small>
+                                </span>
+                            </label>
+                            <label class="@(inviteSelectedRole == "viewer" ? "invite-role-option invite-role-option--active" : "invite-role-option")">
+                                <input type="radio" name="invite-role" value="viewer"
+                                       checked="@(inviteSelectedRole == "viewer")"
+                                       @onchange="SetRoleViewer" />
+                                <span class="invite-role-icon">👁</span>
+                                <span>
+                                    <strong>Obserwator</strong>
+                                    <small>Tylko do odczytu</small>
+                                </span>
+                            </label>
+                            <label class="@(inviteSelectedRole == "admin" ? "invite-role-option invite-role-option--active" : "invite-role-option")">
+                                <input type="radio" name="invite-role" value="admin"
+                                       checked="@(inviteSelectedRole == "admin")"
+                                       @onchange="SetRoleAdmin" />
+                                <span class="invite-role-icon">🛡</span>
+                                <span>
+                                    <strong>Administrator</strong>
+                                    <small>Pełny dostęp</small>
+                                </span>
+                            </label>
+                        </div>
+                    </div>
+                }
+
+                <!-- Feedback messages -->
+                @if (!string.IsNullOrEmpty(inviteSuccessMsg))
+                {
+                    <div class="invite-success">✅ @inviteSuccessMsg</div>
+                }
+                @if (!string.IsNullOrEmpty(inviteErrorMsg))
+                {
+                    <div class="invite-error">⚠️ @inviteErrorMsg</div>
+                }
+
+                <!-- Members already in board -->
+                @if (board != null)
+                {
+                    <div class="invite-members-section">
+                        <p class="invite-members-title">Obecni członkowie</p>
+                        <ul class="invite-members-list">
+
+                            <!-- Owner always shown first -->
+                            @if (board.Owner != null)
+                            {
+                                <li class="invite-member-item">
+                                    <div class="invite-result-avatar invite-member-avatar"
+                                         style="background: @GetAvatarColor(board.Owner.NazwaUzytkownika)">
+                                        @if (!string.IsNullOrEmpty(board.Owner.AvatarUrl))
+                                        {
+                                            <img src="@board.Owner.AvatarUrl" alt="" class="invite-result-avatar-img" />
+                                        }
+                                        else
+                                        {
+                                            @board.Owner.NazwaUzytkownika.Substring(0, 1).ToUpperInvariant()
+                                        }
+                                    </div>
+                                    <div class="invite-member-info">
+                                        <span>
+                                            @board.Owner.NazwaUzytkownika
+                                            @if (board.IdUzytkownikaOwner == currentUserId)
+                                            {
+                                                <span class="invite-member-you"> (Ty)</span>
+                                            }
+                                        </span>
+                                        <span class="invite-member-role invite-member-role--owner">Właściciel</span>
+                                    </div>
+                                </li>
+                            }
+
+                            <!-- Participants from TABLICE_UZYTKOWNICY -->
+                            @foreach (var m in boardMembers)
+                            {
+                                <li class="invite-member-item">
+                                    <div class="invite-result-avatar invite-member-avatar"
+                                         style="background: @GetAvatarColor(m.Uzytkownik?.NazwaUzytkownika ?? "?")">
+                                        @if (!string.IsNullOrEmpty(m.Uzytkownik?.AvatarUrl))
+                                        {
+                                            <img src="@m.Uzytkownik.AvatarUrl" alt="" class="invite-result-avatar-img" />
+                                        }
+                                        else
+                                        {
+                                            @((m.Uzytkownik?.NazwaUzytkownika ?? "?").Substring(0, 1).ToUpperInvariant())
+                                        }
+                                    </div>
+                                    <div class="invite-member-info">
+                                        <span>
+                                            @(m.Uzytkownik?.NazwaUzytkownika ?? "—")
+                                            @if (m.IdUzytkownika == currentUserId)
+                                            {
+                                                <span class="invite-member-you"> (Ty)</span>
+                                            }
+                                        </span>
+                                        <span class="invite-member-role invite-member-role--@m.Rola">@RoleLabel(m.Rola)</span>
+                                    </div>
+                                </li>
+                            }
+
+                        </ul>
+                    </div>
+                }
+
+                <!-- Action button -->
+                <div class="invite-panel-footer">
+                    <button class="invite-btn-add"
+                            disabled="@(inviteSelectedUser == null || isInviteSaving)"
+                            @onclick="AddUserToBoardAsync">
+                        @if (isInviteSaving)
+                        {
+                            <span class="invite-btn-spinner"></span>
+                            <span>Dodawanie...</span>
+                        }
+                        else
+                        {
+                            <span>✓ Dodaj do tablicy</span>
+                        }
+                    </button>
+                </div>
+            </div>
+        </div>
+    }
+
+    <!-- ── Ticket detail modal (Blazor-driven) ── -->
+    @if (selectedTask != null)
+    {
+        <div class="ticket-modal-overlay" @onclick="CloseTicketModal">
+            <div class="ticket-modal-dialog" @onclick:stopPropagation="true" role="dialog"
+                 aria-modal="true" aria-labelledby="ticketModalTitle">
+
+                <!-- Header -->
+                <div class="ticket-modal-header">
+                    <div class="ticket-modal-title-group">
+                        <span class="ticket-modal-id">#@GetDisplayId(selectedTask.IdZadania)</span>
+                        <h5 id="ticketModalTitle" class="ticket-modal-title">@selectedTask.TytulZadania</h5>
+                    </div>
+                    <button class="ticket-modal-close" @onclick="CloseTicketModal" title="Zamknij">✕</button>
+                </div>
+
+                <!-- Body -->
+                <div class="ticket-modal-body">
+                    <!-- Left: description + comments -->
+                    <div class="ticket-modal-left">
+                        <p class="ticket-modal-section-label">Opis</p>
+                        @if (!string.IsNullOrWhiteSpace(selectedTask.OpisZadania))
+                        {
+                            <p class="ticket-modal-desc">@selectedTask.OpisZadania</p>
+                        }
+                        else
+                        {
+                            <p class="ticket-modal-desc ticket-modal-desc--empty">Brak opisu zadania.</p>
+                        }
+
+                        <!-- Comments section -->
+                        <div class="comments-section">
+                            <p class="ticket-modal-section-label comments-title">💬 Komentarze (@taskComments.Count)</p>
+
+                            @if (isLoadingComments)
+                            {
+                                <div class="comments-loading">
+                                    <span class="comments-spinner"></span>
+                                    <span>Ładowanie komentarzy...</span>
+                                </div>
+                            }
+                            else
+                            {
+                                @if (taskComments.Count == 0)
+                                {
+                                    <p class="comments-empty">Brak komentarzy. Bądź pierwszy!</p>
+                                }
+                                else
+                                {
+                                    <ul class="comments-list">
+                                        @foreach (var comment in taskComments)
+                                        {
+                                            var c = comment;
+                                            <li class="comment-item">
+                                                <div class="comment-avatar"
+                                                     style="background: @GetAvatarColor(c.Uzytkownik?.NazwaUzytkownika ?? "?")"
+                                                     title="@(c.Uzytkownik?.NazwaUzytkownika ?? "Nieznany")">
+                                                    @if (!string.IsNullOrEmpty(c.Uzytkownik?.AvatarUrl))
+                                                    {
+                                                        <img src="@c.Uzytkownik.AvatarUrl" alt="@c.Uzytkownik.NazwaUzytkownika" class="comment-avatar-img" />
+                                                    }
+                                                    else
+                                                    {
+                                                        @((c.Uzytkownik?.NazwaUzytkownika ?? "?").Substring(0, 1).ToUpperInvariant())
+                                                    }
+                                                </div>
+                                                <div class="comment-body">
+                                                    <div class="comment-meta">
+                                                        <span class="comment-author">@(c.Uzytkownik?.NazwaUzytkownika ?? "Nieznany")</span>
+                                                        <span class="comment-date">@FormatCommentDate(c.DataUtworzenia)</span>
+                                                        @if (c.DataEdycji.HasValue)
+                                                        {
+                                                            <span class="comment-edited">(edytowano)</span>
+                                                        }
+                                                    </div>
+                                                    @if (editingCommentId == c.IdKomentarza)
+                                                    {
+                                                        <textarea class="comment-edit-input"
+                                                                  @bind="editCommentText"
+                                                                  rows="3"></textarea>
+                                                        <div class="comment-edit-actions">
+                                                            <button class="comment-save-btn" @onclick="() => SaveEditedCommentAsync(c)"
+                                                                    disabled="@isSavingComment">Zapisz</button>
+                                                            <button class="comment-cancel-btn" @onclick="CancelEditComment">Anuluj</button>
+                                                        </div>
+                                                    }
+                                                    else
+                                                    {
+                                                        <p class="comment-text">@c.TrescKomentarza</p>
+                                                        @if (c.IdUzytkownika == currentUserId)
+                                                        {
+                                                            <div class="comment-actions">
+                                                                <button class="comment-action-btn" @onclick="() => StartEditComment(c)" title="Edytuj">✎ Edytuj</button>
+                                                                <button class="comment-action-btn comment-action-btn--delete" @onclick="() => DeleteCommentAsync(c)" title="Usuń">🗑 Usuń</button>
+                                                            </div>
+                                                        }
+                                                    }
+                                                </div>
+                                            </li>
+                                        }
+                                    </ul>
+                                }
+
+                                @if (canAddTask)
+                                {
+                                    <!-- Add comment form (only non-viewers) -->
+                                    <div class="comment-add-wrap">
+                                        <div class="comment-add-avatar"
+                                             style="background: @GetAvatarColor(currentUserName)">
+                                            @if (!string.IsNullOrEmpty(currentUserAvatarUrl))
+                                            {
+                                                <img src="@currentUserAvatarUrl" alt="@currentUserName" class="comment-avatar-img" />
+                                            }
+                                            else
+                                            {
+                                                @(currentUserName.Length > 0 ? currentUserName.Substring(0, 1).ToUpperInvariant() : "?")
+                                            }
+                                        </div>
+                                        <div class="comment-add-input-wrap">
+                                            <textarea class="comment-add-input"
+                                                      @bind="newCommentText"
+                                                      @bind:event="oninput"
+                                                      placeholder="Dodaj komentarz..."
+                                                      rows="2"
+                                                      id="comment-input-@selectedTask.IdZadania"></textarea>
+                                            <div class="comment-add-footer">
+                                                @if (!string.IsNullOrEmpty(commentError))
+                                                {
+                                                    <span class="comment-error">@commentError</span>
+                                                }
+                                                <button class="comment-submit-btn"
+                                                        @onclick="AddCommentAsync"
+                                                        disabled="@(isSavingComment || string.IsNullOrWhiteSpace(newCommentText))">
+                                                    @if (isSavingComment)
+                                                    {
+                                                        <span class="comment-btn-spinner"></span>
+                                                        <span>Zapisywanie...</span>
+                                                    }
+                                                    else
+                                                    {
+                                                        <span>Wyślij</span>
+                                                    }
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <p class="comments-viewer-note">👁 Obserwatorzy mogą tylko czytać komentarze.</p>
+                                }
+                            }
+                        </div>
+                    </div>
+
+                    <!-- Right: metadata -->
+                    <div class="ticket-modal-right">
+                        <p class="ticket-modal-section-label">Szczegóły</p>
+
+                        <div class="ticket-modal-field">
+                            <label class="ticket-modal-field-label">Status</label>
+                            @if (isSavingStatus)
+                            {
+                                <span class="ticket-modal-saving">Zapisywanie...</span>
+                            }
+                            else if (canAddTask)
+                            {
+                                <select class="ticket-modal-select" value="@selectedTask.KolumnaTablicy"
+                                        @onchange="ChangeTaskStatus">
+                                    <option value="Todo">Do zrobienia</option>
+                                    <option value="In Progress">W trakcie</option>
+                                    <option value="In Review">W weryfikacji</option>
+                                    <option value="Done">Zakończone</option>
+                                </select>
+                            }
+                            else
+                            {
+                                <span class="ticket-modal-assignee">@StatusLabel(selectedTask.KolumnaTablicy)</span>
+                            }
+                        </div>
+
+                        <div class="ticket-modal-field">
+                            <label class="ticket-modal-field-label">Priorytet</label>
+                            <span class="ticket-priority-badge ticket-priority-badge--@selectedTask.Priorytet.ToLower()">@PriorityDisplayLabel(selectedTask.Priorytet)</span>
+                        </div>
+
+                        <div class="ticket-modal-field">
+                            <label class="ticket-modal-field-label">Przypisane do</label>
+
+                            @if (!canAddTask)
+                            {
+                                @if (selectedTask.UzytkownikPrzypisany != null)
+                                {
+                                    <span class="ticket-modal-assignee">@selectedTask.UzytkownikPrzypisany.NazwaUzytkownika</span>
+                                }
+                                else
+                                {
+                                    <span class="ticket-modal-assignee ticket-modal-assignee--none">Nieprzypisane</span>
+                                }
+                            }
+                            else
+                            {
+                                <div class="assign-widget">
+                                    @if (selectedTask.UzytkownikPrzypisany != null && !assignSearchOpen)
+                                    {
+                                        <div class="assign-current">
+                                            <div class="assign-avatar"
+                                                 style="background: @GetAvatarColor(selectedTask.UzytkownikPrzypisany.NazwaUzytkownika)">
+                                                @if (!string.IsNullOrEmpty(selectedTask.UzytkownikPrzypisany.AvatarUrl))
+                                                {
+                                                    <img src="@selectedTask.UzytkownikPrzypisany.AvatarUrl"
+                                                         alt="@selectedTask.UzytkownikPrzypisany.NazwaUzytkownika"
+                                                         class="assign-avatar-img" />
+                                                }
+                                                else
+                                                {
+                                                    @selectedTask.UzytkownikPrzypisany.NazwaUzytkownika.Substring(0, 1).ToUpperInvariant()
+                                                }
+                                            </div>
+                                            <span class="assign-name">@selectedTask.UzytkownikPrzypisany.NazwaUzytkownika</span>
+                                            <button class="assign-change-btn" @onclick="OpenAssignSearch" title="Zmień">✎</button>
+                                        </div>
+                                    }
+                                    else if (!assignSearchOpen)
+                                    {
+                                        <div class="assign-empty-row">
+                                            <span class="ticket-modal-assignee ticket-modal-assignee--none">Nieprzypisane</span>
+                                            <button class="assign-open-btn" @onclick="OpenAssignSearch">+ Przypisz</button>
+                                        </div>
+                                    }
+
+                                    @if (assignSearchOpen)
+                                    {
+                                        <div class="assign-search-wrap">
+                                            <span class="assign-search-icon">🔍</span>
+                                            <input class="assign-search-input"
+                                                   type="text"
+                                                   placeholder="Szukaj członka tablicy..."
+                                                   value="@assignSearchQuery"
+                                                   @oninput="OnAssignSearchInput"
+                                                   autocomplete="off" />
+                                            <button class="assign-cancel-btn" @onclick="CloseAssignSearch" title="Anuluj">✕</button>
+                                        </div>
+
+                                        <ul class="assign-results">
+                                            <!-- zawsze widoczna opcja zwolnienia zadania -->
+                                            <li class="assign-result-item assign-result-item--unassign" @onclick="UnassignAsync">
+                                                <div class="assign-result-avatar assign-unassign-icon">✕</div>
+                                                <div class="assign-result-info">
+                                                    <span>Pozostaw puste</span>
+                                                    <small>Usuń przypisanie</small>
+                                                </div>
+                                            </li>
+                                            @foreach (var m in assignSearchResults)
+                                            {
+                                                var mu = m;
+                                                <li class="assign-result-item" @onclick="() => AssignUserAsync(mu)">
+                                                    <div class="assign-result-avatar"
+                                                         style="background: @GetAvatarColor(mu.NazwaUzytkownika)">
+                                                        @if (!string.IsNullOrEmpty(mu.AvatarUrl))
+                                                        {
+                                                            <img src="@mu.AvatarUrl" alt="@mu.NazwaUzytkownika" class="assign-avatar-img" />
+                                                        }
+                                                        else
+                                                        {
+                                                            @mu.NazwaUzytkownika.Substring(0, 1).ToUpperInvariant()
+                                                        }
+                                                    </div>
+                                                    <div class="assign-result-info">
+                                                        <span>@mu.NazwaUzytkownika</span>
+                                                        <small>@mu.Email</small>
+                                                    </div>
+                                                </li>
+                                            }
+                                        </ul>
+                                        @if (assignSearchQuery.Length >= 1 && assignSearchResults.Count == 0)
+                                        {
+                                            <div class="assign-no-results">Brak wyników dla „@assignSearchQuery"</div>
+                                        }
+                                    }
+
+                                    @if (!isSavingAssign)
+                                    {
+                                        <button class="assign-me-btn" @onclick="AssignToMeAsync"
+                                                title="Przypisz to zadanie do siebie">
+                                            👤 Przypisz do mnie
+                                        </button>
+                                    }
+                                    else
+                                    {
+                                        <span class="ticket-modal-saving">Zapisywanie...</span>
+                                    }
+                                </div>
+                            }
+                        </div>
+
+                        <div class="ticket-modal-field">
+                            <label class="ticket-modal-field-label">Data stworzenia</label>
+                            <span class="ticket-modal-assignee">@selectedTask.DataStworzenia.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</span>
+                        </div>
+
+                        @if (!string.IsNullOrEmpty(taskModalError))
+                        {
+                            <div class="ticket-modal-error">⚠️ @taskModalError</div>
+                        }
+                    </div>
+                </div>
+
+                <!-- Footer -->
+                <div class="ticket-modal-footer">
+                    @if (canAddTask)
+                    {
+                        <button class="ticket-modal-btn-delete" @onclick="DeleteTaskAsync"
+                                disabled="@isDeletingTask">
+                            @if (isDeletingTask)
+                            {
+                                <span>Usuwanie...</span>
+                            }
+                            else
+                            {
+                                <span>🗑 Usuń zadanie</span>
+                            }
+                        </button>
+                    }
+                    <button class="ticket-modal-btn-close" @onclick="CloseTicketModal">Zamknij</button>
+                </div>
+            </div>
+        </div>
+    }
+}
+
+@code {
+    // ── Route param ────────────────────────────────
+    [Parameter] public int? BoardId { get; set; }
+
+    // ── Board state ────────────────────────────────
+    private Tablica? board;
+    private bool isLoading = true;
+    private bool canDelete;
+    private bool canInvite;      // owner OR admin
+    private bool canAddTask;     // owner OR admin OR member (NOT viewer)
+    private bool showDeleteConfirm;
+    private bool isDeleting;
+
+    // ── Ticket modal state ─────────────────────────
+    private Zadanie? selectedTask;
+    private bool isSavingStatus;
+    private bool isDeletingTask;
+    private string? taskModalError;
+    private int currentUserId;
+    private string currentUserName = "";
+    private string? currentUserAvatarUrl;
+
+    // ── Comments state ─────────────────────────────
+    private List<Komentarz> taskComments = new();
+    private bool isLoadingComments;
+    private string newCommentText = "";
+    private bool isSavingComment;
+    private string? commentError;
+    private int? editingCommentId;
+    private string editCommentText = "";
+
+    // Assign widget state
+    private bool assignSearchOpen;
+    private string assignSearchQuery = "";
+    private List<Uzytkownik> assignSearchResults = new();
+    private bool isSavingAssign;
+    private System.Threading.Timer? _assignDebounceTimer = null;
+
+    // ── Drag & drop state ──────────────────────────
+    private Zadanie? draggedTask;
+
+    private void SetDraggedTask(Zadanie task) => draggedTask = task;
+    private void ClearDraggedTask() => draggedTask = null;
+
+    private async Task HandleDrop(string targetColumn)
+    {
+        if (draggedTask == null || board == null) return;
+        if (string.Equals(draggedTask.KolumnaTablicy, targetColumn, StringComparison.OrdinalIgnoreCase))
+        {
+            draggedTask = null;
+            return;
+        }
+
+        var taskToMove = draggedTask;
+        draggedTask = null;
+
+        // Optimistic UI update
+        taskToMove.KolumnaTablicy = targetColumn;
+        taskToMove.Status         = targetColumn;
+
+        try
+        {
+            using var scope = ScopeFactory.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+            var dbTask = await db.Zadania.FindAsync(taskToMove.IdZadania);
+            if (dbTask != null)
+            {
+                dbTask.KolumnaTablicy = targetColumn;
+                dbTask.Status         = targetColumn;
+                await db.SaveChangesAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            // Rollback optimistic update – reload board
+            taskModalError = $"Błąd przenoszenia zadania: {ex.Message}";
+            await OnParametersSetAsync();
+        }
+    }
+
+    private List<object> displayedMembers = new(); // mixed: owner entry + TablicaUzytkownik entries
+
+    // ── Invite panel state ────────────────────────
+    private bool showInvitePanel;
+    private string inviteSearchQuery = "";
+    private List<Uzytkownik> inviteSearchResults = new();
+    private Uzytkownik? inviteSelectedUser;
+    private string inviteSelectedRole = "member";
+    private bool isInviteSearching;
+    private bool isInviteSaving;
+    private string? inviteSuccessMsg;
+    private string? inviteErrorMsg;
+    private List<TablicaUzytkownik> boardMembers = new();
+    private System.Threading.Timer? _debounceTimer;
+
+    // ── Members popup state ───────────────────────
+    private bool showMembersPopup;
+    private const int MaxVisibleAvatars = 5;
+
+    private record MemberDisplayInfo(int UserId, string Name, string? AvatarUrl, string Role);
+
+    private List<MemberDisplayInfo> GetAllBoardMembersForDisplay()
+    {
+        var result = new List<MemberDisplayInfo>();
+        if (board == null) return result;
+
+        // Owner first
+        if (board.Owner != null)
+            result.Add(new MemberDisplayInfo(
+                board.Owner.IdUzytkownika,
+                board.Owner.NazwaUzytkownika,
+                board.Owner.AvatarUrl,
+                "owner"));
+
+        // Additional members
+        foreach (var m in boardMembers)
+        {
+            if (m.Uzytkownik != null)
+                result.Add(new MemberDisplayInfo(
+                    m.Uzytkownik.IdUzytkownika,
+                    m.Uzytkownik.NazwaUzytkownika,
+                    m.Uzytkownik.AvatarUrl,
+                    m.Rola));
+        }
+
+        return result;
+    }
+
+    private void ToggleMembersPopup() => showMembersPopup = !showMembersPopup;
+    private void CloseMembersPopup() => showMembersPopup = false;
+
+    // ── Avatar palette ─────────────────────────────
+    private static readonly string[] AvatarColors =
+    [
+        "#0052CC", "#00875A", "#FF5630", "#FF8B00",
+        "#6554C0", "#00B8D9", "#172B4D", "#403294"
+    ];
+
+    private static string GetAvatarColor(string name) =>
+        AvatarColors[Math.Abs(name.GetHashCode()) % AvatarColors.Length];
+
+    private static string RoleLabel(string rola) => rola switch
+    {
+        "owner"  => "Właściciel",
+        "admin"  => "Administrator",
+        "viewer" => "Obserwator",
+        _        => "Członek"
+    };
+
+    // ── Lifecycle ──────────────────────────────────
+    protected override async Task OnParametersSetAsync()
+    {
+        isLoading = true;
+        showDeleteConfirm = false;
+        showInvitePanel = false;
+        board = null;
+        canDelete = false;
+        canInvite = false;
+        displayedMembers = new();
+
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+        if (user.Identity is not { IsAuthenticated: true }) { isLoading = false; return; }
+
+        var idClaim = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (int.TryParse(idClaim, out int uid) && uid > 0)
+        {
+            currentUserId = uid;
+        }
+        else
+        {
+            var email = user.FindFirst(ClaimTypes.Email)?.Value;
+            if (!string.IsNullOrEmpty(email))
+            {
+                using var ls = ScopeFactory.CreateScope();
+                var ldb = ls.ServiceProvider.GetRequiredService<AppDbContext>();
+                currentUserId = (await ldb.Uzytkownicy.FirstOrDefaultAsync(u => u.Email == email))?.IdUzytkownika ?? 0;
+            }
+        }
+
+        // Load current user info for comment avatar
+        if (currentUserId > 0)
+        {
+            using var us = ScopeFactory.CreateScope();
+            var udb = us.ServiceProvider.GetRequiredService<AppDbContext>();
+            var me = await udb.Uzytkownicy.FindAsync(currentUserId);
+            if (me != null)
+            {
+                currentUserName      = me.NazwaUzytkownika;
+                currentUserAvatarUrl = me.AvatarUrl;
+            }
+        }
+
+        if (currentUserId <= 0 || BoardId == null) { isLoading = false; return; }
+
+        using var scope = ScopeFactory.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        board = await db.Tablice
+            .Include(t => t.Owner)
+            .Include(t => t.TabliceUzyt)
+                .ThenInclude(tu => tu.Uzytkownik)
+            .Include(t => t.Zadania)
+                .ThenInclude(z => z.UzytkownikPrzypisany)
+            .FirstOrDefaultAsync(t =>
+                t.IdTablicy == BoardId &&
+                (t.IdUzytkownikaOwner == currentUserId ||
+                 t.TabliceUzyt.Any(tu => tu.IdUzytkownika == currentUserId)));
+
+        if (board != null)
+        {
+            var isOwner = board.IdUzytkownikaOwner == currentUserId;
+            var isAdmin = board.TabliceUzyt
+                .Any(tu => tu.IdUzytkownika == currentUserId && tu.Rola == "admin");
+
+            canDelete  = isOwner || isAdmin;
+            canInvite  = isOwner || isAdmin;
+            canAddTask = isOwner || isAdmin ||
+                         board.TabliceUzyt.Any(tu =>
+                             tu.IdUzytkownika == currentUserId &&
+                             tu.Rola == "member");
+
+            boardMembers = board.TabliceUzyt.ToList();
+        }
+
+        isLoading = false;
+    }
+
+    private void OpenInvitePanel()
+    {
+        inviteSearchQuery = "";
+        inviteSearchResults = new();
+        inviteSelectedUser = null;
+        inviteSelectedRole = "member";
+        inviteSuccessMsg = null;
+        inviteErrorMsg = null;
+        showInvitePanel = true;
+    }
+
+    private void CloseInvitePanel()
+    {
+        showInvitePanel = false;
+        _debounceTimer?.Dispose();
+    }
+
+    private void OnInviteSearchInput(ChangeEventArgs e)
+    {
+        inviteSearchQuery = e.Value?.ToString() ?? "";
+        inviteSelectedUser = null;
+        inviteErrorMsg = null;
+        inviteSuccessMsg = null;
+        inviteSearchResults = new();
+
+        _debounceTimer?.Dispose();
+
+        if (inviteSearchQuery.Length < 2)
+            return;
+
+        _debounceTimer = new System.Threading.Timer(async _ =>
+        {
+            await SearchUsersAsync(inviteSearchQuery);
+        }, null, 300, System.Threading.Timeout.Infinite);
+    }
+
+    private async Task SearchUsersAsync(string query)
+    {
+        isInviteSearching = true;
+        await InvokeAsync(StateHasChanged);
+
+        try
+        {
+            // Already-in-board ids to exclude
+            var excludeIds = boardMembers.Select(m => m.IdUzytkownika).ToHashSet();
+            excludeIds.Add(board!.IdUzytkownikaOwner);
+
+            using var scope = ScopeFactory.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+            // PostgreSQL ILIKE — case-insensitive substring search on name AND email
+            var pattern = $"%{query.Replace("%", "\\%").Replace("_", "\\_")}%";
+
+            inviteSearchResults = await db.Uzytkownicy
+                .Where(u =>
+                    !excludeIds.Contains(u.IdUzytkownika) &&
+                    (EF.Functions.ILike(u.NazwaUzytkownika, pattern) ||
+                     EF.Functions.ILike(u.Email, pattern)))
+                .OrderBy(u => u.NazwaUzytkownika)
+                .Take(8)
+                .ToListAsync();
+        }
+        catch
+        {
+            inviteSearchResults = new();
+        }
+        finally
+        {
+            isInviteSearching = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private void SelectInviteUser(Uzytkownik user)
+    {
+        inviteSelectedUser = user;
+        inviteSearchQuery = user.NazwaUzytkownika;
+        inviteSearchResults = new();
+        inviteErrorMsg = null;
+        inviteSuccessMsg = null;
+    }
+
+    private void ClearInviteSelection()
+    {
+        inviteSelectedUser = null;
+        inviteSearchQuery = "";
+        inviteSearchResults = new();
+    }
+
+    private void SetRoleMember(ChangeEventArgs _) => inviteSelectedRole = "member";
+    private void SetRoleViewer(ChangeEventArgs _) => inviteSelectedRole = "viewer";
+    private void SetRoleAdmin(ChangeEventArgs _)  => inviteSelectedRole = "admin";
+
+    private async Task AddUserToBoardAsync()
+    {
+        if (inviteSelectedUser == null || board == null) return;
+
+        isInviteSaving = true;
+        inviteErrorMsg = null;
+        inviteSuccessMsg = null;
+
+        try
+        {
+            using var scope = ScopeFactory.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+            var alreadyExists = await db.TabliceUzytkownicy
+                .AnyAsync(tu => tu.IdTablicy == board.IdTablicy &&
+                                tu.IdUzytkownika == inviteSelectedUser.IdUzytkownika);
+
+            if (alreadyExists)
+            {
+                inviteErrorMsg = $"{inviteSelectedUser.NazwaUzytkownika} jest już członkiem tej tablicy.";
+                return;
+            }
+
+            var entry = new TablicaUzytkownik
+            {
+                IdTablicy      = board.IdTablicy,
+                IdUzytkownika  = inviteSelectedUser.IdUzytkownika,
+                Rola           = inviteSelectedRole,
+                DataDolaczenia = DateTime.UtcNow,
+            };
+
+            db.TabliceUzytkownicy.Add(entry);
+            await db.SaveChangesAsync();
+
+            // Load the full nav property for the members list display
+            entry.Uzytkownik = inviteSelectedUser;
+            boardMembers.Add(entry);
+
+            inviteSuccessMsg = $"✅ {inviteSelectedUser.NazwaUzytkownika} został dodany jako {RoleLabel(inviteSelectedRole)}.";
+            ClearInviteSelection();
+        }
+        catch (Exception ex)
+        {
+            inviteErrorMsg = $"Błąd: {ex.Message}";
+        }
+        finally
+        {
+            isInviteSaving = false;
+        }
+    }
+
+    // ── Task helpers ────────────────────────────────
+    private IEnumerable<Zadanie> GetTasksByColumn(string columnName) =>
+        board?.Zadania?.Where(z =>
+            string.Equals(z.KolumnaTablicy, columnName, StringComparison.OrdinalIgnoreCase))
+        ?? Enumerable.Empty<Zadanie>();
+
+    private static string PriorityDisplayLabel(string priorytet) => priorytet.ToLower() switch
+    {
+        "wysoki" or "high"   => "Wysoki",
+        "niski"  or "low"    => "Niski",
+        _                    => "Średni"
+    };
+
+    private static string StatusLabel(string kolumna) => kolumna switch
+    {
+        "In Progress" => "W trakcie",
+        "In Review"   => "W weryfikacji",
+        "Done"        => "Zakończone",
+        _             => "Do zrobienia"
+    };
+
+    // ── Ticket modal ────────────────────────────────
+    private void OpenTicketModal(Zadanie task)
+    {
+        selectedTask        = task;
+        taskModalError      = null;
+        assignSearchOpen    = false;
+        assignSearchQuery   = "";
+        assignSearchResults = new();
+        newCommentText      = "";
+        commentError        = null;
+        editingCommentId    = null;
+        taskComments        = new();
+        _ = LoadCommentsAsync(task.IdZadania);
+    }
+
+    private void CloseTicketModal()
+    {
+        selectedTask      = null;
+        taskModalError    = null;
+        assignSearchOpen  = false;
+        taskComments      = new();
+        editingCommentId  = null;
+        _assignDebounceTimer?.Dispose();
+    }
+
+    // ── Comments ────────────────────────────────────
+    private async Task LoadCommentsAsync(int zadanieId)
+    {
+        isLoadingComments = true;
+        await InvokeAsync(StateHasChanged);
+        try
+        {
+            using var scope = ScopeFactory.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            taskComments = await db.Komentarze
+                .Include(k => k.Uzytkownik)
+                .Where(k => k.IdZadania == zadanieId)
+                .OrderByDescending(k => k.DataUtworzenia)
+                .ToListAsync();
+        }
+        catch
+        {
+            taskComments = new();
+        }
+        finally
+        {
+            isLoadingComments = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task AddCommentAsync()
+    {
+        if (selectedTask == null || string.IsNullOrWhiteSpace(newCommentText)) return;
+
+        isSavingComment = true;
+        commentError = null;
+
+        try
+        {
+            using var scope = ScopeFactory.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+            var komentarz = new Komentarz
+            {
+                IdZadania       = selectedTask.IdZadania,
+                IdUzytkownika   = currentUserId,
+                TrescKomentarza = newCommentText.Trim(),
+                DataUtworzenia  = DateTime.UtcNow,
+            };
+
+            db.Komentarze.Add(komentarz);
+            await db.SaveChangesAsync();
+
+            // Load the user nav property
+            komentarz.Uzytkownik = await db.Uzytkownicy.FindAsync(currentUserId)
+                                  ?? throw new InvalidOperationException("Nie odnaleziono zalogowanego użytkownika w bazie danych.");
+
+            taskComments.Insert(0, komentarz);
+            newCommentText = "";
+        }
+        catch (Exception ex)
+        {
+            commentError = $"Błąd dodawania komentarza: {ex.Message}";
+        }
+        finally
+        {
+            isSavingComment = false;
+        }
+    }
+
+    private void StartEditComment(Komentarz komentarz)
+    {
+        editingCommentId = komentarz.IdKomentarza;
+        editCommentText  = komentarz.TrescKomentarza;
+    }
+
+    private void CancelEditComment()
+    {
+        editingCommentId = null;
+        editCommentText  = "";
+    }
+
+    private async Task SaveEditedCommentAsync(Komentarz komentarz)
+    {
+        if (string.IsNullOrWhiteSpace(editCommentText)) return;
+
+        isSavingComment = true;
+        try
+        {
+            using var scope = ScopeFactory.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+            var dbComment = await db.Komentarze.FindAsync(komentarz.IdKomentarza);
+            if (dbComment != null)
+            {
+                dbComment.TrescKomentarza = editCommentText.Trim();
+                dbComment.DataEdycji      = DateTime.UtcNow;
+                await db.SaveChangesAsync();
+
+                komentarz.TrescKomentarza = dbComment.TrescKomentarza;
+                komentarz.DataEdycji      = dbComment.DataEdycji;
+            }
+            editingCommentId = null;
+            editCommentText  = "";
+        }
+        catch (Exception ex)
+        {
+            commentError = $"Błąd edycji: {ex.Message}";
+        }
+        finally
+        {
+            isSavingComment = false;
+        }
+    }
+
+    private async Task DeleteCommentAsync(Komentarz komentarz)
+    {
+        try
+        {
+            using var scope = ScopeFactory.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+            var dbComment = await db.Komentarze.FindAsync(komentarz.IdKomentarza);
+            if (dbComment != null)
+            {
+                db.Komentarze.Remove(dbComment);
+                await db.SaveChangesAsync();
+                taskComments.Remove(komentarz);
+            }
+        }
+        catch (Exception ex)
+        {
+            commentError = $"Błąd usuwania komentarza: {ex.Message}";
+        }
+    }
+
+    private static string FormatCommentDate(DateTime utc)
+    {
+        var local = utc.ToLocalTime();
+        var now   = DateTime.Now;
+        var diff  = now - local;
+        if (diff.TotalMinutes < 1)   return "przed chwilą";
+        if (diff.TotalMinutes < 60)  return $"{(int)diff.TotalMinutes} min temu";
+        if (diff.TotalHours   < 24)  return $"{(int)diff.TotalHours} godz. temu";
+        if (diff.TotalDays    < 7)   return $"{(int)diff.TotalDays} dni temu";
+        return local.ToString("dd.MM.yyyy HH:mm");
+    }
+
+    // ── Assign widget ───────────────────────────────
+    private void OpenAssignSearch()
+    {
+        assignSearchQuery   = "";
+        assignSearchResults = BuildAssignResults("");
+        assignSearchOpen    = true;
+    }
+
+    private void CloseAssignSearch()
+    {
+        assignSearchOpen    = false;
+        assignSearchQuery   = "";
+        assignSearchResults = new();
+        _assignDebounceTimer?.Dispose();
+    }
+
+    private void OnAssignSearchInput(ChangeEventArgs e)
+    {
+        assignSearchQuery   = e.Value?.ToString() ?? "";
+        assignSearchResults = BuildAssignResults(assignSearchQuery);
+    }
+
+    /// <summary>Filtruje lokalną listę boardMembers + owner wg wpisanej frazy (pomija viewerów).</summary>
+    private List<Uzytkownik> BuildAssignResults(string query)
+    {
+        if (board == null) return new();
+
+        var all = new List<Uzytkownik>();
+        if (board.Owner != null) all.Add(board.Owner);
+        foreach (var m in boardMembers)
+        {
+            if (m.Rola == "viewer") continue;
+            if (m.Uzytkownik != null) all.Add(m.Uzytkownik);
+        }
+
+        if (string.IsNullOrWhiteSpace(query))
+            return all;
+
+        return all.Where(u =>
+            u.NazwaUzytkownika.Contains(query, StringComparison.OrdinalIgnoreCase) ||
+            u.Email.Contains(query, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+    }
+
+    private async Task AssignUserAsync(Uzytkownik user)
+    {
+        if (selectedTask == null) return;
+        await SaveAssignmentAsync(user);
+    }
+
+    private async Task AssignToMeAsync()
+    {
+        if (selectedTask == null || board == null) return;
+
+        Uzytkownik? me = null;
+        if (board.Owner?.IdUzytkownika == currentUserId)
+            me = board.Owner;
+        else
+            me = boardMembers.FirstOrDefault(m => m.IdUzytkownika == currentUserId)?.Uzytkownik;
+
+        if (me == null)
+        {
+            using var s = ScopeFactory.CreateScope();
+            var db = s.ServiceProvider.GetRequiredService<AppDbContext>();
+            me = await db.Uzytkownicy.FindAsync(currentUserId);
+        }
+
+        if (me != null) await SaveAssignmentAsync(me);
+    }
+
+    private async Task UnassignAsync()
+    {
+        if (selectedTask == null) return;
+        isSavingAssign = true;
+        taskModalError = null;
+        CloseAssignSearch();
+
+        try
+        {
+            using var scope = ScopeFactory.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+            var dbTask = await db.Zadania.FindAsync(selectedTask.IdZadania);
+            if (dbTask != null)
+            {
+                dbTask.IdUzytkownikaPrzypisanego = null;
+                await db.SaveChangesAsync();
+
+                selectedTask.IdUzytkownikaPrzypisanego = null;
+                selectedTask.UzytkownikPrzypisany      = null;
+            }
+        }
+        catch (Exception ex)
+        {
+            taskModalError = $"Błąd usuwania przypisania: {ex.Message}";
+        }
+        finally
+        {
+            isSavingAssign = false;
+        }
+    }
+
+    private async Task SaveAssignmentAsync(Uzytkownik user)
+    {
+        if (selectedTask == null) return;
+
+        // Skip if already assigned to this person
+        if (selectedTask.IdUzytkownikaPrzypisanego == user.IdUzytkownika)
+        {
+            CloseAssignSearch();
+            return;
+        }
+
+        isSavingAssign = true;
+        taskModalError = null;
+        CloseAssignSearch();
+
+        try
+        {
+            using var scope = ScopeFactory.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+            var dbTask = await db.Zadania.FindAsync(selectedTask.IdZadania);
+            if (dbTask != null)
+            {
+                dbTask.IdUzytkownikaPrzypisanego = user.IdUzytkownika;
+                await db.SaveChangesAsync();
+
+                selectedTask.IdUzytkownikaPrzypisanego = user.IdUzytkownika;
+                selectedTask.UzytkownikPrzypisany      = user;
+
+                // Send assignment notification email
+                await EmailService.SendAssignmentNotificationAsync(
+                    user.Email,
+                    user.NazwaUzytkownika,
+                    selectedTask.TytulZadania,
+                    board?.NazwaTablicy ?? "—",
+                    selectedTask.IdZadania,
+                    selectedTask.OpisZadania);
+            }
+        }
+        catch (Exception ex)
+        {
+            taskModalError = $"Błąd przypisania: {ex.Message}";
+        }
+        finally
+        {
+            isSavingAssign = false;
+        }
+    }
+
+
+    private async Task ChangeTaskStatus(ChangeEventArgs e)
+    {
+        if (selectedTask == null || board == null) return;
+
+        var newColumn = e.Value?.ToString() ?? selectedTask.KolumnaTablicy;
+        isSavingStatus = true;
+        taskModalError = null;
+
+        try
+        {
+            using var scope = ScopeFactory.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+            var dbTask = await db.Zadania.FindAsync(selectedTask.IdZadania);
+            if (dbTask != null)
+            {
+                dbTask.KolumnaTablicy = newColumn;
+                dbTask.Status         = newColumn;
+                await db.SaveChangesAsync();
+
+                // Update in-memory
+                selectedTask.KolumnaTablicy = newColumn;
+                selectedTask.Status         = newColumn;
+            }
+        }
+        catch (Exception ex)
+        {
+            taskModalError = $"Błąd zapisu: {ex.Message}";
+        }
+        finally
+        {
+            isSavingStatus = false;
+        }
+    }
+
+    private async Task DeleteTaskAsync()
+    {
+        if (selectedTask == null || board == null) return;
+
+        isDeletingTask = true;
+        taskModalError = null;
+
+        try
+        {
+            using var scope = ScopeFactory.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+            var dbTask = await db.Zadania.FindAsync(selectedTask.IdZadania);
+            if (dbTask != null)
+            {
+                db.Zadania.Remove(dbTask);
+                await db.SaveChangesAsync();
+
+                // Remove from in-memory collection
+                var taskList = board.Zadania as ICollection<Zadanie>;
+                taskList?.Remove(selectedTask);
+            }
+
+            isDeletingTask = false;
+            CloseTicketModal();
+        }
+        catch (Exception ex)
+        {
+            taskModalError = $"Błąd usuwania: {ex.Message}";
+            isDeletingTask = false;
+        }
+    }
+
+    // ── Delete board ───────────────────────────────
+    private async Task DeleteBoardAsync()
+    {
+        if (board == null) return;
+        isDeleting = true;
+
+        try
+        {
+            using var scope = ScopeFactory.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+            int boardIdToDelete = board.IdTablicy;
+
+            var toDelete = await db.Tablice
+                .Include(t => t.TabliceUzyt)
+                .Include(t => t.Zadania)
+                .FirstOrDefaultAsync(t =>
+                    t.IdTablicy == boardIdToDelete &&
+                    (t.IdUzytkownikaOwner == currentUserId ||
+                     t.TabliceUzyt.Any(tu =>
+                         tu.IdUzytkownika == currentUserId &&
+                         tu.Rola == "admin")));
+
+            if (toDelete != null)
+            {
+                db.Tablice.Remove(toDelete);
+                await db.SaveChangesAsync();
+                await BoardState.NotifyBoardCreatedAsync();
+                NavManager.NavigateTo("/projects");
+            }
+        }
+        catch
+        {
+            showDeleteConfirm = false;
+            isDeleting = false;
+        }
+    }
+
+    // ── Helpers ────────────────────────────────────
+    /// <summary>
+    /// Generuje deterministyczny, wielocyfrowy (6-znakowy) ID wyświetlany zamiast
+    /// sekwencyjnego klucza bazy danych. Ten sam idZadania zawsze daje ten sam wynik.
+    /// </summary>
+    private static string GetDisplayId(int idZadania)
+    {
+        var seed = idZadania * 131071 + 47;
+        var pseudo = (seed ^ (seed >> 16)) * 0x45d9f3b;
+        pseudo = (pseudo ^ (pseudo >> 16)) * 0x45d9f3b;
+        pseudo ^= pseudo >> 16;
+        return (Math.Abs(pseudo) % 900_000 + 100_000).ToString();
+    }
+
+    // ── Cleanup ────────────────────────────────────
+    public async ValueTask DisposeAsync()
+    {
+        _debounceTimer?.Dispose();
+        await Task.CompletedTask;
+    }
+}
