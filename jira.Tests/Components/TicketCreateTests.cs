@@ -20,24 +20,22 @@ namespace jira.Tests.Components.Pages;
 
 public class TicketCreateTests : BunitContext
 {
-    private readonly AppDbContext _dbContext;
+    private readonly DbContextOptions<AppDbContext> _dbOptions;
     private readonly FakeAuthenticationStateProvider _authStateProvider;
     private readonly Mock<IEmailService> _emailServiceMock;
 
     public TicketCreateTests()
     {
-        // 1. Czysta baza InMemory z unikalną nazwą dla każdego przebiegu testu
-        var options = new DbContextOptionsBuilder<AppDbContext>()
+        // 1. Definiujemy unikalną bazę danych w pamięci dla każdego przebiegu testowego
+        _dbOptions = new DbContextOptionsBuilder<AppDbContext>()
             .UseInMemoryDatabase(databaseName: $"JiraTicketSimpleDb_{Guid.NewGuid()}")
             .Options;
-        
-        _dbContext = new AppDbContext(options);
 
         // 2. Mock zewnętrznej usługi e-mail
         _emailServiceMock = new Mock<IEmailService>();
 
-        // 3. Rejestracja usług wprost do bUnit
-        Services.AddScoped(_ => _dbContext);
+        // 3. Rejestracja usług – komponent dostanie świeżą instancję contextu na żądanie
+        Services.AddScoped(sp => new AppDbContext(_dbOptions));
         Services.AddSingleton(_emailServiceMock.Object);
         
         _authStateProvider = new FakeAuthenticationStateProvider();
@@ -57,6 +55,9 @@ public class TicketCreateTests : BunitContext
 
     private async Task SeedTestDataAsync(int boardId, string boardName, int ownerId, int memberId)
     {
+        // Otwieramy izolowany kontekst na czas przygotowania danych (Arrange)
+        using var context = new AppDbContext(_dbOptions);
+
         var owner = new Uzytkownik { IdUzytkownika = ownerId, Email = "owner@jira.pl", NazwaUzytkownika = "Projekt Manager" };
         var member = new Uzytkownik { IdUzytkownika = memberId, Email = "dev@jira.pl", NazwaUzytkownika = "Starszy Programista" };
 
@@ -75,10 +76,10 @@ public class TicketCreateTests : BunitContext
             Uzytkownik = member
         };
 
-        _dbContext.Uzytkownicy.AddRange(owner, member);
-        _dbContext.Tablice.Add(board);
-        _dbContext.Set<TablicaUzytkownik>().Add(boardMember);
-        await _dbContext.SaveChangesAsync();
+        context.Uzytkownicy.AddRange(owner, member);
+        context.Tablice.Add(board);
+        context.Set<TablicaUzytkownik>().Add(boardMember);
+        await context.SaveChangesAsync();
     }
 
     [Fact]
@@ -86,7 +87,6 @@ public class TicketCreateTests : BunitContext
     {
         SetupUser(1, "user@jira.pl", "Test User");
 
-        // Pozostawiamy URL bez parametrów query
         var cut = Render<TicketCreate>();
 
         var errorAlert = cut.Find("div.cb-alert-error");
@@ -101,20 +101,16 @@ public class TicketCreateTests : BunitContext
         SetupUser(10, "pm@jira.pl", "Manager");
         await SeedTestDataAsync(testBoardId, "Projekt Alfa", ownerId: 10, memberId: 20);
 
-        // Symulacja Query Stringa poprzez Navigation Manager przed wyrenderowaniem komponentu
         var navManager = Services.GetRequiredService<NavigationManager>();
         navManager.NavigateTo($"http://localhost/ticket/new?boardId={testBoardId}");
 
         var cut = Render<TicketCreate>();
 
-        // Czekamy na zakończenie ładowania danych asynchronicznych (aż zniknie spinner .cb-loading)
         cut.WaitForState(() => cut.FindAll(".cb-loading").Count == 0, TimeSpan.FromSeconds(3));
 
-        // Sprawdzenie nazwy tablicy
         var subtitle = cut.Find(".create-board-subtitle strong");
         Assert.Equal("Projekt Alfa", subtitle.TextContent);
 
-        // Sprawdzenie listy użytkowników
         var options = cut.FindAll("#ticket-assignee option");
         Assert.Equal(3, options.Count);
         Assert.Contains("— Nieprzypisane —", options[0].TextContent);
@@ -134,7 +130,6 @@ public class TicketCreateTests : BunitContext
 
         var cut = Render<TicketCreate>();
 
-        // Czekamy na schowanie spinnera ładowania
         cut.WaitForState(() => cut.FindAll(".cb-loading").Count == 0, TimeSpan.FromSeconds(3));
 
         var inputTitle = cut.Find("#ticket-name");
@@ -157,7 +152,6 @@ public class TicketCreateTests : BunitContext
 
         var cut = Render<TicketCreate>();
 
-        // Czekamy na schowanie spinnera ładowania
         cut.WaitForState(() => cut.FindAll(".cb-loading").Count == 0, TimeSpan.FromSeconds(3));
 
         var prioritySelect = cut.Find("#ticket-priority");
@@ -167,9 +161,79 @@ public class TicketCreateTests : BunitContext
         Assert.Equal("Todo", columnSelect.GetAttribute("value"));
     }
 
-    protected override void Dispose(bool disposing)
+    [Fact]
+    public async Task HandleSubmit_ValidData_SavesToDbSendsEmailAndRedirects()
     {
-        _dbContext.Dispose();
-        base.Dispose(disposing);
+        const int testBoardId = 15;
+        SetupUser(10, "pm@jira.pl", "Manager");
+        await SeedTestDataAsync(testBoardId, "Projekt Alfa", ownerId: 10, memberId: 20);
+
+        var navManager = Services.GetRequiredService<NavigationManager>();
+        navManager.NavigateTo($"http://localhost/ticket/new?boardId={testBoardId}");
+
+        var cut = Render<TicketCreate>();
+        cut.WaitForState(() => cut.FindAll(".cb-loading").Count == 0, TimeSpan.FromSeconds(3));
+
+        // Act – Wypełnianie pól formularza
+        cut.Find("#ticket-name").Change("Naprawić błąd logowania");
+        cut.Find("#ticket-desc").Change("Użytkownicy zgłaszają problem z logowaniem przez Google");
+        cut.Find("#ticket-priority").Change("wysoki");
+        cut.Find("#ticket-column").Change("In Progress");
+        cut.Find("#ticket-assignee").Change("20");
+
+        cut.Find("form").Submit();
+
+        // Assert – Sprawdzenie bazy danych przy użyciu świeżego, bezpiecznego kontekstu
+        using (var dbCheck = new AppDbContext(_dbOptions))
+        {
+            var savedTask = await dbCheck.Set<Zadanie>().FirstOrDefaultAsync(z => z.IdTablicy == testBoardId);
+            Assert.NotNull(savedTask);
+            Assert.Equal("Naprawić błąd logowania", savedTask!.TytulZadania);
+            Assert.Equal("wysoki", savedTask.Priorytet);
+            Assert.Equal("In Progress", savedTask.Status);
+            Assert.Equal(20, savedTask.IdUzytkownikaPrzypisanego);
+            Assert.Equal(10, savedTask.IdUzytkownikaTworcyZadania);
+        }
+
+        // Weryfikacja mocka usługi pocztowej
+        _emailServiceMock.Verify(x => x.SendAssignmentNotificationAsync(
+            "dev@jira.pl",
+            "Starszy Programista",
+            "Naprawić błąd logowania",
+            "Projekt Alfa",
+            It.IsAny<int>(),
+            "Użytkownicy zgłaszają problem z logowaniem przez Google"
+        ), Times.Once);
+
+        await Task.Delay(1300);
+        Assert.EndsWith($"/board/{testBoardId}", navManager.Uri);
     }
+
+    [Fact]
+    public async Task SubmittingForm_WithInvalidData_TriggersValidationAndDoesNotSave()
+    {
+        const int testBoardId = 15;
+        SetupUser(10, "pm@jira.pl", "Manager");
+        await SeedTestDataAsync(testBoardId, "Projekt Alfa", ownerId: 10, memberId: 20);
+
+        var navManager = Services.GetRequiredService<NavigationManager>();
+        navManager.NavigateTo($"http://localhost/ticket/new?boardId={testBoardId}");
+
+        var cut = Render<TicketCreate>();
+        cut.WaitForState(() => cut.FindAll(".cb-loading").Count == 0, TimeSpan.FromSeconds(3));
+
+        cut.Find("form").Submit();
+
+        var errorSpan = cut.Find(".cb-field-error");
+        Assert.Equal("Tytuł jest wymagany.", errorSpan.TextContent.Trim());
+
+        // Assert – Sprawdzenie licznika bazy danych za pomocą bezpiecznego kontekstu
+        using (var dbCheck = new AppDbContext(_dbOptions))
+        {
+            var tasksInDb = await dbCheck.Set<Zadanie>().CountAsync();
+            Assert.Equal(0, tasksInDb);
+        }
+    }
+
+    // Stara metoda Dispose nie jest już wymagana, bUnit posprząta kontenery DI automatycznie
 }

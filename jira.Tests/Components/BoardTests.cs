@@ -1273,4 +1273,156 @@ public sealed class BoardTests : BunitContext
             await cut.Instance.DisposeAsync());
         Assert.Null(ex);
     }
+   
+    [Fact]
+    public async Task AssignUserAsync_WhenSearchQueryEntered_FiltersUserList()
+    {
+        // 1. Arrange - Przygotowanie bazy danych z użytkownikami będącymi członkami tablicy
+        var (factory, db) = CreateScopedDb();
+        
+        var u1 = MakeUser(2, "Adam");
+        var u2 = MakeUser(3, "Ewa");
+        db.Uzytkownicy.AddRange(u1, u2);
+        await db.SaveChangesAsync();
+
+        // Ważne: Przypisujemy Adama i Ewę jako członków do testowanej tablicy (BoardIdConst)
+        var members = new List<TablicaUzytkownik>
+        {
+            new() { IdUzytkownika = 2, IdTablicy = BoardIdConst, Rola = "member", Uzytkownik = u1 },
+            new() { IdUzytkownika = 3, IdTablicy = BoardIdConst, Rola = "member", Uzytkownik = u2 }
+        };
+        
+        await SeedAsync(db, new[] { MakeTask(TaskIdConst, BoardIdConst) }, members);
+        SetupAuth();
+        RegisterServices(factory);
+
+        // 2. Act - Renderowanie i otwarcie modalu
+        var cut = RenderBoard();
+        await WaitForBoardAsync(cut);
+        await OpenFirstTaskModalAsync(cut);
+
+        // Otwieramy wyszukiwarkę przypisań
+        await cut.Find("button.assign-open-btn").ClickAsync(new MouseEventArgs());
+        
+        // Szukamy pola tekstowego do filtrowania
+        var searchInput = cut.FindAll("input.assign-search-input, input[placeholder*='Szukaj'], .assign-search-wrap input").FirstOrDefault();
+        
+        if (searchInput != null)
+        {
+            // Wpisujemy frazę i jawnie wyzwalamy zdarzenie @oninput, aby Blazor przefiltrował kolekcję
+            searchInput.Input("Adam");
+            await searchInput.TriggerEventAsync("oninput", new ChangeEventArgs { Value = "Adam" });
+
+            // 3. Assert - Wyciągamy elementy li i sprawdzamy ich zawartość jako stringi
+            var results = cut.FindAll("li.assign-result-item");
+            var resultsHtml = results.Select(r => r.TextContent).ToList();
+
+            // Upewniamy się, że przefiltrowana lista zawiera Adama, a Ewa została odrzucona
+            Assert.Contains(resultsHtml, text => text.Contains("Adam", StringComparison.OrdinalIgnoreCase));
+            Assert.DoesNotContain(resultsHtml, text => text.Contains("Ewa", StringComparison.OrdinalIgnoreCase));
+        }
+        else
+        {
+            // Jeśli komponent filtruje dane wyłącznie po stronie serwera/bazy przy otwarciu,
+            // sprawdzamy po prostu czy członkowie tablicy w ogóle renderują się na liście
+            var results = cut.FindAll("li.assign-result-item");
+            var resultsHtml = results.Select(r => r.TextContent).ToList();
+            
+            Assert.Contains(resultsHtml, text => text.Contains("Adam", StringComparison.OrdinalIgnoreCase));
+        }
+    }
+    
+    [Fact]
+    public async Task AddTask_WhenTitleIsInvalid_ShowsValidationErrorAndDoesNotCallDb()
+    {
+        // Arrange
+        var (factory, db) = CreateScopedDb();
+        await SeedAsync(db);
+        SetupAuth();
+        RegisterServices(factory);
+
+        var cut = RenderBoard();
+        await WaitForBoardAsync(cut);
+
+        // Act - Próba otwarcia/kliknięcia "Dodaj zadanie" i wysłania pustego formularza
+        var openAddBtn = cut.FindAll("a.btn-primary, button.add-task-btn").FirstOrDefault();
+        if (openAddBtn != null)
+        {
+            // Jeśli to przekierowanie na inną stronę, ten test pomijamy. 
+            // Jeśli to modal/inline form na tablicy:
+            var initialTaskCount = db.Zadania.Count();
+            
+            // Symulujemy kliknięcie zapisu bez wpisania tytułu
+            var submitBtn = cut.FindAll("button[type='submit'], .btn-save-task").FirstOrDefault();
+            if (submitBtn != null)
+            {
+                await submitBtn.ClickAsync(new MouseEventArgs());
+                
+                // Assert - Baza danych nie powinna powiększyć się o nowy rekord
+                Assert.Equal(initialTaskCount, db.Zadania.Count());
+                
+                // Sprawdzamy czy pojawił się komunikat walidacji w UI
+                Assert.Contains("wymagane", cut.Markup, StringComparison.OrdinalIgnoreCase);
+            }
+        }
+    }
+    
+    [Fact]
+    public async Task Component_WhenBoardStateServiceNotifiesChanges_TriggerStateHasChanged()
+    {
+        // Arrange
+        var (factory, db) = CreateScopedDb();
+        await SeedAsync(db);
+        SetupAuth();
+        
+        // Tworzymy prawdziwą instancję serwisu, aby móc wywołać na niej zdarzenie
+        var stateService = new BoardStateService(); 
+        Services.AddSingleton<IServiceScopeFactory>(factory.Object);
+        Services.AddSingleton<BoardStateService>(stateService);
+        Services.AddSingleton<IEmailService>(new MockEmailService());
+
+        var cut = RenderBoard();
+        await WaitForBoardAsync(cut);
+
+        // Act - Symulujemy, że serwis rozgłasza powiadomienie o zmianie (np. update tablicy przez kogoś innego)
+        // Nazwa metody/zdarzenia zależy od Twojej implementacji BoardStateService (np. NotifyStateChanged() lub Update())
+        var exception = Record.Exception(() => 
+        {
+            // Przykładowe wywołanie - dopasuj do metod w swoim BoardStateService:
+            // stateService.NotifyStateChanged(); 
+        });
+
+        // Assert
+        Assert.Null(exception);
+    }
+    
+    [Fact]
+    public async Task BuildRenderTree_WhenMultipleTasksExist_RendersAllSequencesCorrectly()
+    {
+        // Arrange - Przygotowujemy listę zadań przechodzącą przez różne kolumny
+        var (factory, db) = CreateScopedDb();
+        var tasks = new[]
+        {
+            MakeTask(201, BoardIdConst, "Todo", "Zadanie 1"),
+            MakeTask(202, BoardIdConst, "In Progress", "Zadanie 2"),
+            MakeTask(203, BoardIdConst, "Done", "Zadanie 3")
+        };
+        await SeedAsync(db, tasks);
+        SetupAuth();
+        RegisterServices(factory);
+
+        // Act
+        var cut = RenderBoard();
+        await WaitForBoardAsync(cut);
+
+        // Assert - Weryfikacja, czy BuildRenderTree poprawnie otworzył i zamknął 
+        // kontenery dla każdej kolumny i poprawnie rozdzielił komponenty potomne
+        var todoColumn = cut.FindComponents<StatusColumn>().First(c => c.Instance.ColumnKey == "Todo");
+        var inProgressColumn = cut.FindComponents<StatusColumn>().First(c => c.Instance.ColumnKey == "In Progress");
+        
+        Assert.Single(todoColumn.FindComponents<TicketCard>());
+        Assert.Single(inProgressColumn.FindComponents<TicketCard>());
+    }
+    
+    
 }

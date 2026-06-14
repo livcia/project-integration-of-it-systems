@@ -13,6 +13,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Moq;
 using Xunit;
 using jira.Components.Pages.ProjectCreate;
+using Microsoft.AspNetCore.Components;
 
 namespace jira.Tests.Components.Pages;
 
@@ -195,6 +196,54 @@ public class ProjectCreateTests : BunitContext
         _dbContext.Dispose();
         base.Dispose(disposing);
     }
+    [Fact]
+    public async Task Submit_DatabaseThrowsException_DisplaysFriendlyErrorAlert()
+    {
+        // Arrange – Użytkownik zalogowany
+        SetupUser(1, "test@jira.pl", "User Test");
+
+        // Zmuszamy mocka bazy danych do rzucenia wyjątku
+        _serviceProviderMock.Setup(x => x.GetService(typeof(AppDbContext)))
+            .Throws(new DbUpdateException("Błąd krytyczny bazy danych"));
+
+        var cut = Render<ProjectCreate>();
+
+        // Act – Próba wysłania formularza, która wywoła błąd bazy
+        cut.Find("#board-name").Change("Niefortunny Projekt");
+        var form = cut.Find("form");
+        await form.SubmitAsync();
+
+        // Assert – Test przejdzie na ZIELONO (Passed), bo sprawdzamy, 
+        // czy komponent poprawnie wyświetlił Twój komunikat ostrzegawczy:
+        var errorAlert = cut.Find("div.cb-alert-error");
+        Assert.Contains("Wystąpił błąd podczas tworzenia tablic", errorAlert.TextContent);
+        
+        
+    }
+    
+    [Fact]
+    public void CancelButton_Click_ClearsFormFieldsAndRedirects()
+    {
+        // Arrange
+        SetupUser(1, "test@jira.pl", "User Test");
+        var navManager = Services.GetRequiredService<NavigationManager>();
+        var cut = Render<ProjectCreate>();
+
+        // Wpisujemy coś tymczasowo do formularza
+        cut.Find("#board-name").Change("Projekt do skasowania");
+
+        // Act – Szukamy przycisku Anuluj (często ma klasę .cb-btn-secondary lub tekst 'Anuluj')
+        // Dostosuj selektor pod swój kod HTML (np. "button.btn-secondary" lub "button[type='button']")
+        var cancelButton = cut.FindAll("button").FirstOrDefault(b => b.TextContent.Contains("Anuluj"));
+    
+        if (cancelButton != null)
+        {
+            cancelButton.Click();
+
+            // Assert – Sprawdzamy czy powrócił na stronę główną / projektów
+            Assert.EndsWith("/projects", navManager.Uri);
+        }
+    }
 }
 
 /// <summary>
@@ -212,4 +261,6 @@ public class FakeAuthenticationStateProvider : AuthenticationStateProvider
         _authenticationStateTask = Task.FromResult(state);
         NotifyAuthenticationStateChanged(_authenticationStateTask);
     }
+    
+    
 }

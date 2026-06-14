@@ -17,6 +17,12 @@
   <component name="ChangeListManager">
     <list default="true" id="5efbd7f4-79f0-4a64-a45e-070c8a06e350" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/.idea.project-integration-of-it-systems.dir/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/.idea.project-integration-of-it-systems.dir/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Folder.DotSettings.user" beforeDir="false" afterPath="$PROJECT_DIR$/Folder.DotSettings.user" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/jira.Tests/Components/BoardTests.cs" beforeDir="false" afterPath="$PROJECT_DIR$/jira.Tests/Components/BoardTests.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/jira.Tests/Components/ProjectCreateTests.cs" beforeDir="false" afterPath="$PROJECT_DIR$/jira.Tests/Components/ProjectCreateTests.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/jira.Tests/Components/TicketCreateTests.cs" beforeDir="false" afterPath="$PROJECT_DIR$/jira.Tests/Components/TicketCreateTests.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/jira.Tests/OAuthHelperTests.cs" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/jira.Tests/jira.Tests.csproj" beforeDir="false" afterPath="$PROJECT_DIR$/jira.Tests/jira.Tests.csproj" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -31,89 +37,101 @@
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
   </component>
-  <component name="GitHubPullRequestSearchHistory"><![CDATA[{
-  "lastFilter": {
-    "state": "OPEN",
-    "assignee": "malzab"
+  <component name="GitHubPullRequestSearchHistory">{
+  &quot;lastFilter&quot;: {
+    &quot;state&quot;: &quot;OPEN&quot;,
+    &quot;assignee&quot;: &quot;malzab&quot;
   }
-}]]></component>
-  <component name="GithubPullRequestsUISettings"><![CDATA[{
-  "selectedUrlAndAccountId": {
-    "url": "git@github.com:livcia/project-integration-of-it-systems.git",
-    "accountId": "f77a09ac-71d5-4fd4-aaf0-e444455dabca"
+}</component>
+  <component name="GithubPullRequestsUISettings">{
+  &quot;selectedUrlAndAccountId&quot;: {
+    &quot;url&quot;: &quot;git@github.com:livcia/project-integration-of-it-systems.git&quot;,
+    &quot;accountId&quot;: &quot;f77a09ac-71d5-4fd4-aaf0-e444455dabca&quot;
   }
-}]]></component>
+}</component>
   <component name="HighlightingSettingsPerFile">
     <setting file="file://$USER_HOME$/.nuget/packages/microsoft.net.test.sdk/17.14.1/build/net8.0/Microsoft.NET.Test.Sdk.Program.cs" root0="SKIP_HIGHLIGHTING" />
+    <setting file="file://$PROJECT_DIR$/jira.Tests/Components/ErrorTests.cs" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/jira.Tests/Components/LoginLayoutTests.cs" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/jira.Tests/Components/LoginTests.cs" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file://$PROJECT_DIR$/jira.Tests/Components/MainLayoutTests.cs" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file://$PROJECT_DIR$/jira.Tests/Components/NavMenuTests.cs" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/jira.Tests/Components/ProjectCreateTests.cs" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file://$PROJECT_DIR$/jira.Tests/Components/RedirectToLoginTests.cs" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/jira.Tests/Components/SendGridTests.cs" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/jira.Tests/Components/TicketCreateTests.cs" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/jira.Tests/Fixtures/TestDataBuilder.cs" root0="FORCE_HIGHLIGHTING" />
   </component>
+  <component name="KubernetesApiPersistence">{}</component>
+  <component name="KubernetesApiProvider">{
+  &quot;isMigrated&quot;: true
+}</component>
   <component name="McpProjectServerCommands">
     <commands />
     <urls />
   </component>
+  <component name="MetaFilesCheckinStateConfiguration" checkMetaFiles="true" />
   <component name="NextEditCompletionFeaturesState">
     <decayedCancelled>
-      <entry key="MS100" value="2.1072391958018932" />
-      <entry key="MS500" value="4.745538493793935" />
-      <entry key="S2" value="9.93198619600613" />
-      <entry key="S5" value="15.330699992765727" />
-      <entry key="S10" value="19.02312349404954" />
-      <entry key="S30" value="22.649132916714215" />
-      <entry key="S60" value="23.770309864195113" />
-      <entry key="M2" value="24.370727833594277" />
-      <entry key="M5" value="24.748796269010896" />
-      <entry key="M10" value="25.085278007955022" />
-      <entry key="M15" value="25.731058931217515" />
-      <entry key="M30" value="28.155672476869963" />
-      <entry key="H1" value="31.390554062519286" />
-      <entry key="H2" value="34.105042612772685" />
-      <entry key="H4" value="35.87620523019461" />
-      <entry key="D1" value="37.61862485331815" />
-      <entry key="W1" value="37.94480473007121" />
+      <entry key="MS100" value="1.0" />
+      <entry key="MS500" value="1.0" />
+      <entry key="S2" value="1.0" />
+      <entry key="S5" value="1.0" />
+      <entry key="S10" value="1.0" />
+      <entry key="S30" value="1.0000000000255516" />
+      <entry key="S60" value="1.0000050548516866" />
+      <entry key="M2" value="1.0022522131429834" />
+      <entry key="M5" value="1.1456430078014042" />
+      <entry key="M10" value="2.8594289110283313" />
+      <entry key="M15" value="6.209169795447727" />
+      <entry key="M30" value="17.021646115519534" />
+      <entry key="H1" value="33.59447190448979" />
+      <entry key="H2" value="54.281788772219485" />
+      <entry key="H4" value="73.50179660456234" />
+      <entry key="D1" value="98.54714034174326" />
+      <entry key="W1" value="104.0425212578912" />
     </decayedCancelled>
     <decayedSelected>
-      <entry key="MS100" value="7.214902934666027E-42" />
-      <entry key="MS500" value="5.9814731830766765E-9" />
-      <entry key="S2" value="0.01166768184809227" />
-      <entry key="S5" value="0.24695999943171593" />
-      <entry key="S10" value="0.6985646480244392" />
-      <entry key="S30" value="1.4065861776419515" />
-      <entry key="S60" value="1.676966297258291" />
-      <entry key="M2" value="1.8312980007114879" />
-      <entry key="M5" value="1.9369269410443242" />
-      <entry key="M10" value="2.115463452324172" />
-      <entry key="M15" value="2.444734240964721" />
-      <entry key="M30" value="3.4957012963302727" />
-      <entry key="H1" value="4.7302890697977125" />
-      <entry key="H2" value="5.6928692035768345" />
-      <entry key="H4" value="6.296421581498894" />
-      <entry key="D1" value="6.875108074206541" />
-      <entry key="W1" value="6.981961857637435" />
+      <entry key="MS100" value="0.0" />
+      <entry key="MS500" value="0.0" />
+      <entry key="S2" value="0.0" />
+      <entry key="S5" value="1.1146144064236995E-176" />
+      <entry key="S10" value="1.0558358146934505E-88" />
+      <entry key="S30" value="5.111044140236862E-30" />
+      <entry key="S60" value="3.2364151519860906E-15" />
+      <entry key="M2" value="1.0292907681662477E-7" />
+      <entry key="M5" value="0.00360139865477711" />
+      <entry key="M10" value="0.119627057890138" />
+      <entry key="M15" value="0.3859142645771127" />
+      <entry key="M30" value="1.2956454465087182" />
+      <entry key="H1" value="2.8195094545597548" />
+      <entry key="H2" value="5.104319797152432" />
+      <entry key="H4" value="7.5477864658517895" />
+      <entry key="D1" value="11.05219067542838" />
+      <entry key="W1" value="11.858359648108841" />
     </decayedSelected>
     <decayedShown>
-      <entry key="MS100" value="1.93117231181668" />
-      <entry key="MS500" value="4.6617322599599325" />
-      <entry key="S2" value="9.893442777387598" />
-      <entry key="S5" value="15.483478921349974" />
-      <entry key="S10" value="19.604785651674526" />
-      <entry key="S30" value="23.979621940953855" />
-      <entry key="S60" value="25.402060418301982" />
-      <entry key="M2" value="26.177364713069615" />
-      <entry key="M5" value="26.67529696524324" />
-      <entry key="M10" value="27.19500137576398" />
-      <entry key="M15" value="28.171256128470297" />
-      <entry key="M30" value="31.64790535826992" />
-      <entry key="H1" value="36.11837790246732" />
-      <entry key="H2" value="39.79638872720685" />
-      <entry key="H4" value="42.17177329913701" />
-      <entry key="D1" value="44.49357588758839" />
-      <entry key="W1" value="44.926743762075816" />
+      <entry key="MS100" value="2.746724816134786E-4" />
+      <entry key="MS500" value="0.193982713568714" />
+      <entry key="S2" value="0.6636525348881669" />
+      <entry key="S5" value="0.848743190666265" />
+      <entry key="S10" value="0.9212725930289389" />
+      <entry key="S30" value="0.9730370651966125" />
+      <entry key="S60" value="0.9864314071853555" />
+      <entry key="M2" value="0.9954291465753268" />
+      <entry key="M5" value="1.1462472123974823" />
+      <entry key="M10" value="2.976334043556993" />
+      <entry key="M15" value="6.591665727496756" />
+      <entry key="M30" value="18.313013176925523" />
+      <entry key="H1" value="36.41007290589409" />
+      <entry key="H2" value="59.38314213412878" />
+      <entry key="H4" value="81.04763416748956" />
+      <entry key="D1" value="109.59890333425153" />
+      <entry key="W1" value="115.90081653749894" />
     </decayedShown>
+  </component>
+  <component name="ProblemsViewState">
+    <option name="selectedTabId" value="Toolset" />
   </component>
   <component name="ProjectColorInfo">{
   &quot;associatedIndex&quot;: 2,
@@ -124,33 +142,33 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "ASKED_SHARE_PROJECT_CONFIGURATION_FILES": "true",
-    "ModuleVcsDetector.initialDetectionPerformed": "true",
-    "RunOnceActivity.MCP Project settings loaded": "true",
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
-    "RunOnceActivity.cidr.known.project.marker": "true",
-    "RunOnceActivity.git.unshallow": "true",
-    "RunOnceActivity.readMode.enableVisualFormatting": "true",
-    "RunOnceActivity.typescript.service.memoryLimit.init": "true",
-    "cidr.known.project.marker": "true",
-    "codeWithMe.voiceChat.enabledByDefault": "false",
-    "com.intellij.ml.llm.matterhorn.ej.ui.settings.DefaultModelSelectionForGA.v1": "true",
-    "git-widget-placeholder": "#37 on feature/coverage",
-    "junie.onboarding.icon.badge.shown": "true",
-    "last_opened_file_path": "/home/livcia/Desktop",
-    "node.js.detected.package.eslint": "true",
-    "node.js.detected.package.tslint": "true",
-    "node.js.selected.package.eslint": "(autodetect)",
-    "node.js.selected.package.tslint": "(autodetect)",
-    "nodejs_package_manager_path": "npm",
-    "settings.editor.selected.configurable": "preferences.pluginManager",
-    "to.speed.mode.migration.done": "true",
-    "vue.rearranger.settings.migration": "true"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;ASKED_SHARE_PROJECT_CONFIGURATION_FILES&quot;: &quot;true&quot;,
+    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.MCP Project settings loaded&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.cidr.known.project.marker&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.readMode.enableVisualFormatting&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.typescript.service.memoryLimit.init&quot;: &quot;true&quot;,
+    &quot;cidr.known.project.marker&quot;: &quot;true&quot;,
+    &quot;codeWithMe.voiceChat.enabledByDefault&quot;: &quot;false&quot;,
+    &quot;com.intellij.ml.llm.matterhorn.ej.ui.settings.DefaultModelSelectionForGA.v1&quot;: &quot;true&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;#37 on feature/coverage&quot;,
+    &quot;junie.onboarding.icon.badge.shown&quot;: &quot;true&quot;,
+    &quot;last_opened_file_path&quot;: &quot;/home/livcia/Desktop&quot;,
+    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
+    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
+    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
+    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;DotCoverFilteringPageId&quot;,
+    &quot;to.speed.mode.migration.done&quot;: &quot;true&quot;,
+    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
   }
-}]]></component>
+}</component>
   <component name="RunManager" selected="Docker.jira/Dockerfile">
     <configuration name="jira: http" type="LaunchSettings" factoryName=".NET Launch Settings Profile">
       <option name="LAUNCH_PROFILE_PROJECT_FILE_PATH" value="$PROJECT_DIR$/jira/jira.csproj" />
@@ -214,7 +232,7 @@
       <workItem from="1781295647748" duration="381000" />
       <workItem from="1781296095040" duration="2608000" />
       <workItem from="1781358099575" duration="5248000" />
-      <workItem from="1781375896267" duration="7662000" />
+      <workItem from="1781375896267" duration="21228000" />
     </task>
     <servers />
   </component>
@@ -222,46 +240,47 @@
     <option name="version" value="3" />
   </component>
   <component name="UnitTestsCoverage.Settings">
-    <option name="coveragePercentColumnWidth" value="65" />
+    <option name="coveragePercentColumnWidth" value="57" />
     <option name="sortOrder" value="DESCENDING" />
     <option name="sortedColumn" value="1" />
-    <option name="symbolColumnWidth" value="236" />
+    <option name="symbolColumnWidth" value="213" />
     <coverage-tree-state>
       <expand>
         <path>
           <item name="rootNode" type="c53c71d1:RiderDotCoverCoverageTreeModel$RootNode" />
-          <item name="Total 73% 1140/4297" type="8b8fad3a:RiderDotCoverCoverageTreeNode" />
+          <item name="Total 76% 1082/4549" type="8b8fad3a:RiderDotCoverCoverageTreeNode" />
         </path>
         <path>
           <item name="rootNode" type="c53c71d1:RiderDotCoverCoverageTreeModel$RootNode" />
-          <item name="Total 73% 1140/4297" type="8b8fad3a:RiderDotCoverCoverageTreeNode" />
-          <item name="jira 39% 1111/1822" type="8b8fad3a:RiderDotCoverCoverageTreeNode" />
+          <item name="Total 76% 1082/4549" type="8b8fad3a:RiderDotCoverCoverageTreeNode" />
+          <item name="jira 43% 1043/1822" type="8b8fad3a:RiderDotCoverCoverageTreeNode" />
         </path>
         <path>
           <item name="rootNode" type="c53c71d1:RiderDotCoverCoverageTreeModel$RootNode" />
-          <item name="Total 73% 1140/4297" type="8b8fad3a:RiderDotCoverCoverageTreeNode" />
-          <item name="jira 39% 1111/1822" type="8b8fad3a:RiderDotCoverCoverageTreeNode" />
-          <item name="jira 42% 991/1702" type="8b8fad3a:RiderDotCoverCoverageTreeNode" />
+          <item name="Total 76% 1082/4549" type="8b8fad3a:RiderDotCoverCoverageTreeNode" />
+          <item name="jira 43% 1043/1822" type="8b8fad3a:RiderDotCoverCoverageTreeNode" />
+          <item name="jira 46% 923/1702" type="8b8fad3a:RiderDotCoverCoverageTreeNode" />
         </path>
         <path>
           <item name="rootNode" type="c53c71d1:RiderDotCoverCoverageTreeModel$RootNode" />
-          <item name="Total 73% 1140/4297" type="8b8fad3a:RiderDotCoverCoverageTreeNode" />
-          <item name="jira 39% 1111/1822" type="8b8fad3a:RiderDotCoverCoverageTreeNode" />
-          <item name="jira 42% 991/1702" type="8b8fad3a:RiderDotCoverCoverageTreeNode" />
-          <item name="Components 53% 539/1143" type="8b8fad3a:RiderDotCoverCoverageTreeNode" />
+          <item name="Total 76% 1082/4549" type="8b8fad3a:RiderDotCoverCoverageTreeNode" />
+          <item name="jira 43% 1043/1822" type="8b8fad3a:RiderDotCoverCoverageTreeNode" />
+          <item name="jira 46% 923/1702" type="8b8fad3a:RiderDotCoverCoverageTreeNode" />
+          <item name="Components 59% 471/1143" type="8b8fad3a:RiderDotCoverCoverageTreeNode" />
         </path>
         <path>
           <item name="rootNode" type="c53c71d1:RiderDotCoverCoverageTreeModel$RootNode" />
-          <item name="Total 73% 1140/4297" type="8b8fad3a:RiderDotCoverCoverageTreeNode" />
-          <item name="jira 39% 1111/1822" type="8b8fad3a:RiderDotCoverCoverageTreeNode" />
-          <item name="jira 42% 991/1702" type="8b8fad3a:RiderDotCoverCoverageTreeNode" />
-          <item name="Components 53% 539/1143" type="8b8fad3a:RiderDotCoverCoverageTreeNode" />
-          <item name="Pages 55% 439/975" type="8b8fad3a:RiderDotCoverCoverageTreeNode" />
+          <item name="Total 76% 1082/4549" type="8b8fad3a:RiderDotCoverCoverageTreeNode" />
+          <item name="jira 43% 1043/1822" type="8b8fad3a:RiderDotCoverCoverageTreeNode" />
+          <item name="jira 46% 923/1702" type="8b8fad3a:RiderDotCoverCoverageTreeNode" />
+          <item name="Components 59% 471/1143" type="8b8fad3a:RiderDotCoverCoverageTreeNode" />
+          <item name="Pages 56% 431/975" type="8b8fad3a:RiderDotCoverCoverageTreeNode" />
         </path>
       </expand>
       <select />
     </coverage-tree-state>
   </component>
+  <component name="UnityCheckinConfiguration" checkUnsavedScenes="true" />
   <component name="UnityProjectConfiguration" hasMinimizedUI="false" />
   <component name="VcsManagerConfiguration">
     <option name="CLEAR_INITIAL_COMMIT_MESSAGE" value="true" />
@@ -280,6 +299,12 @@
         <breakpoint enabled="true" type="DotNet_Exception_Breakpoints">
           <properties exception="System.Threading.ThreadAbortException" breakIfHandledByOtherCode="false" displayValue="System.Threading.ThreadAbortException" />
           <option name="timeStamp" value="3" />
+        </breakpoint>
+        <breakpoint enabled="true" type="DotNet_Exception_Breakpoints">
+          <properties exception="System.InvalidOperationException" breakIfHandledByUserCode="true" isInternal="false" displayValue="InvalidOperationException" namespaceName="System">
+            <option name="internal" value="false" />
+          </properties>
+          <option name="timeStamp" value="4" />
         </breakpoint>
       </breakpoints>
     </breakpoint-manager>
