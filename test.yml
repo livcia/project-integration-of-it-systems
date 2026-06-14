@@ -22,7 +22,7 @@ jobs:
         working-directory: ./jira
         run: dotnet restore
 
-      - name: lint (analiza kodu)
+      - name: lint - analiza kodu
         working-directory: ./jira
         run: dotnet build --configuration Release -warnaserror
 
