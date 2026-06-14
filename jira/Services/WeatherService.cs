@@ -10,11 +10,11 @@ public class WeatherService
 
     private static readonly string ApiUrl =
         $"https://api.open-meteo.com/v1/forecast" +
-        $"?latitude={Latitude.ToString(System.Globalization.CultureInfo.InvariantCulture)}" +
-        $"&longitude={Longitude.ToString(System.Globalization.CultureInfo.InvariantCulture)}" +
+        $"?latitude=54.544306" +
+        $"&longitude=18.546205" +
         $"&current=temperature_2m,weathercode,windspeed_10m,relativehumidity_2m" +
         $"&timezone=Europe%2FWarsaw";
-
+    
     private readonly HttpClient _httpClient;
 
     public WeatherService(HttpClient httpClient)
