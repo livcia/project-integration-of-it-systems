@@ -24,6 +24,10 @@ if (File.Exists(envRoot))
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Detect whether the app is running inside a Docker container
+var isInContainer = File.Exists("/.dockerenv")
+    || string.Equals(Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER"), "true", StringComparison.OrdinalIgnoreCase);
+
 var connectionString = ConnectionStringHelper.Build();
 
 builder.Services.AddDbContext<AppDbContext>(options =>
