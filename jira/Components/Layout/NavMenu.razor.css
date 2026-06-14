@@ -70,14 +70,13 @@
     overflow: hidden;
 }
 
-/* ── Board color dot ─────────────────────────── */
 .nav-board-dot {
     width: 18px;
     height: 18px;
     min-width: 18px;
     border-radius: 5px;
     flex-shrink: 0;
-    opacity: 0.65;           /* pastel-like softening */
+    opacity: 0.65;
     transition: opacity 0.15s, transform 0.15s, box-shadow 0.15s;
     box-shadow: 0 1px 3px rgba(0,0,0,0.15);
 }
@@ -97,7 +96,7 @@
     border-left-color: #0052cc;
 }
 .nav-link.active .nav-board-dot {
-    opacity: 1;                 /* full vivid color when selected */
+    opacity: 1;
     transform: scale(1.1);
     box-shadow: 0 2px 6px rgba(0,0,0,0.22);
 }

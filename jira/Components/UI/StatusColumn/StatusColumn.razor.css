@@ -1,4 +1,4 @@
-/* ── Kanban column wrapper ────────────────────── */
+
 .kanban-col {
     flex: 1 1 0;
     min-width: 220px;
@@ -6,27 +6,24 @@
     flex-direction: column;
 }
 
-/* Inner card: background + fixed height */
 .kanban-col-inner {
     background: #f4f5f7;
     border-radius: 10px;
     padding: 0.75rem 0.75rem 0;
     display: flex;
     flex-direction: column;
-    height: 100%;           /* fills the flex row height (set on parent) */
+    height: 100%;
     box-shadow: 0 1px 4px rgba(9, 30, 66, 0.06);
     border: 1px solid #dde1e7;
     transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
 }
 
-/* Highlighted drop zone */
 .kanban-col-inner--drag-over {
     background: #e8f0fe;
     border-color: #2684ff;
     box-shadow: 0 0 0 2px rgba(38, 132, 255, 0.25), 0 2px 8px rgba(9, 30, 66, 0.1);
 }
 
-/* Animated placeholder shown inside the drop zone */
 .kanban-drop-placeholder {
     height: 60px;
     border: 2px dashed #2684ff;
@@ -42,7 +39,6 @@
 }
 
 
-/* Column title */
 .kanban-col-title {
     font-size: 0.78rem;
     font-weight: 700;
@@ -55,14 +51,12 @@
     flex-shrink: 0;
 }
 
-/* Scrollable area – grows to fill remaining height of the inner card */
 .kanban-col-scroll {
     flex: 1 1 0;
     overflow-y: auto;
     overflow-x: hidden;
     padding-bottom: 0.75rem;
 
-    /* thin, unobtrusive scrollbar */
     scrollbar-width: thin;
     scrollbar-color: #c1c7d0 transparent;
 }
@@ -84,10 +78,9 @@
     background: #8993a4;
 }
 
-/* Cards container */
 .kanban-col-cards {
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
-    padding-right: 2px; /* prevent thumb overlap */
+    padding-right: 2px;
 }

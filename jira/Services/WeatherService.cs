@@ -3,13 +3,9 @@ using System.Text.Json.Serialization;
 
 namespace jira.Services;
 
-/// <summary>
-/// Pobiera aktualną pogodę z Open-Meteo dla stałej lokalizacji (Gdynia Oksywie).
-/// Dokumentacja API: https://open-meteo.com/en/docs
-/// </summary>
 public class WeatherService
 {
-    private const double Latitude  = 54.5480;
+    private const double Latitude = 54.5480;
     private const double Longitude = 18.5446;
 
     private static readonly string ApiUrl =
@@ -26,9 +22,6 @@ public class WeatherService
         _httpClient = httpClient;
     }
 
-    /// <summary>
-    /// Pobiera aktualne dane pogodowe. Zwraca null gdy API jest niedostępne.
-    /// </summary>
     public async Task<CurrentWeather?> GetCurrentWeatherAsync()
     {
         try
@@ -42,45 +35,35 @@ public class WeatherService
         }
     }
 
-    /// <summary>
-    /// Zwraca opis słowny i emoji na podstawie kodu WMO (weathercode).
-    /// Kody: https://open-meteo.com/en/docs#weathervariables
-    /// </summary>
     public static (string Description, string Emoji) GetWeatherDescription(int code) => code switch
     {
-        0                    => ("Bezchmurnie",           "☀️"),
-        1                    => ("Przeważnie pogodnie",   "🌤️"),
-        2                    => ("Częściowe zachmurzenie","⛅"),
-        3                    => ("Pochmurno",             "☁️"),
-        45 or 48             => ("Mgła",                  "🌫️"),
-        51 or 53 or 55       => ("Mżawka",                "🌦️"),
-        61 or 63 or 65       => ("Deszcz",                "🌧️"),
-        71 or 73 or 75       => ("Śnieg",                 "❄️"),
-        80 or 81 or 82       => ("Przelotne opady",       "🌦️"),
-        95                   => ("Burza",                 "⛈️"),
-        96 or 99             => ("Burza z gradem",        "⛈️"),
-        _                    => ("Nieznana pogoda",       "🌡️"),
+        0 => ("Bezchmurnie", "☀️"),
+        1 => ("Przeważnie pogodnie", "🌤️"),
+        2 => ("Częściowe zachmurzenie", "⛅"),
+        3 => ("Pochmurno", "☁️"),
+        45 or 48 => ("Mgła", "🌫️"),
+        51 or 53 or 55 => ("Mżawka", "🌦️"),
+        61 or 63 or 65 => ("Deszcz", "🌧️"),
+        71 or 73 or 75 => ("Śnieg", "❄️"),
+        80 or 81 or 82 => ("Przelotne opady", "🌦️"),
+        95 => ("Burza", "⛈️"),
+        96 or 99 => ("Burza z gradem", "⛈️"),
+        _ => ("Nieznana pogoda", "🌡️"),
     };
 }
 
-// ─── Modele odpowiedzi Open-Meteo ───────────────────────────────────────────
-
 public class OpenMeteoResponse
 {
-    [JsonPropertyName("current")]
-    public CurrentWeather? Current { get; set; }
+    [JsonPropertyName("current")] public CurrentWeather? Current { get; set; }
 }
 
 public class CurrentWeather
 {
-    [JsonPropertyName("temperature_2m")]
-    public double Temperature { get; set; }
+    [JsonPropertyName("temperature_2m")] public double Temperature { get; set; }
 
-    [JsonPropertyName("weathercode")]
-    public int WeatherCode { get; set; }
+    [JsonPropertyName("weathercode")] public int WeatherCode { get; set; }
 
-    [JsonPropertyName("windspeed_10m")]
-    public double WindSpeed { get; set; }
+    [JsonPropertyName("windspeed_10m")] public double WindSpeed { get; set; }
 
     [JsonPropertyName("relativehumidity_2m")]
     public int Humidity { get; set; }
