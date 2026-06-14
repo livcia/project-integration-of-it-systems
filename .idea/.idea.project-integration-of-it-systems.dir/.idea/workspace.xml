@@ -18,8 +18,8 @@
     <list default="true" id="5efbd7f4-79f0-4a64-a45e-070c8a06e350" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/.idea.project-integration-of-it-systems.dir/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/.idea.project-integration-of-it-systems.dir/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Folder.DotSettings.user" beforeDir="false" afterPath="$PROJECT_DIR$/Folder.DotSettings.user" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/jira.Tests/Components/MainLayoutTests.cs" beforeDir="false" afterPath="$PROJECT_DIR$/jira.Tests/Components/MainLayoutTests.cs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/jira.Tests/Components/ProjectCreateTests.cs" beforeDir="false" afterPath="$PROJECT_DIR$/jira.Tests/Components/ProjectCreateTests.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/jira.Tests/Components/BoardTests.cs" beforeDir="false" afterPath="$PROJECT_DIR$/jira.Tests/Components/BoardTests.cs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/jira.Tests/Components/NavMenuTests.cs" beforeDir="false" afterPath="$PROJECT_DIR$/jira.Tests/Components/NavMenuTests.cs" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -70,61 +70,61 @@
   <component name="MetaFilesCheckinStateConfiguration" checkMetaFiles="true" />
   <component name="NextEditCompletionFeaturesState">
     <decayedCancelled>
-      <entry key="MS100" value="5.1737453390760875E-11" />
-      <entry key="MS500" value="0.008765183441644411" />
-      <entry key="S2" value="0.3059780358155" />
-      <entry key="S5" value="0.6226960358477923" />
-      <entry key="S10" value="0.7891109147944871" />
-      <entry key="S30" value="0.9240866230307262" />
-      <entry key="S60" value="0.9612943770468813" />
-      <entry key="M2" value="0.9808212648685183" />
-      <entry key="M5" value="1.0343049799490742" />
-      <entry key="M10" value="1.2046769534550688" />
-      <entry key="M15" value="1.4133336183321725" />
-      <entry key="M30" value="3.3686279356034747" />
-      <entry key="H1" value="12.631038349128806" />
-      <entry key="H2" value="32.743986097082775" />
-      <entry key="H4" value="57.36339682168449" />
-      <entry key="D1" value="96.00792729507884" />
-      <entry key="W1" value="105.34413634908856" />
+      <entry key="MS100" value="0.0" />
+      <entry key="MS500" value="5.711804606175231E-112" />
+      <entry key="S2" value="1.5459424961264694E-28" />
+      <entry key="S5" value="7.510646716228413E-12" />
+      <entry key="S10" value="2.740555913720501E-6" />
+      <entry key="S30" value="0.013994140258138985" />
+      <entry key="S60" value="0.11829690351525549" />
+      <entry key="M2" value="0.34514489424070616" />
+      <entry key="M5" value="1.066788397743914" />
+      <entry key="M10" value="3.7838943786539376" />
+      <entry key="M15" value="6.692360832118294" />
+      <entry key="M30" value="12.980759117269674" />
+      <entry key="H1" value="23.041932193466128" />
+      <entry key="H2" value="42.870304942106635" />
+      <entry key="H4" value="69.6154548606546" />
+      <entry key="D1" value="116.02205674700342" />
+      <entry key="W1" value="127.87506664790615" />
     </decayedCancelled>
     <decayedSelected>
       <entry key="MS100" value="1.0" />
       <entry key="MS500" value="1.0" />
       <entry key="S2" value="1.0" />
-      <entry key="S5" value="1.0" />
-      <entry key="S10" value="1.0" />
-      <entry key="S30" value="1.0" />
-      <entry key="S60" value="1.0" />
-      <entry key="M2" value="1.0" />
-      <entry key="M5" value="1.0000000047091582" />
-      <entry key="M10" value="1.0001367935014027" />
-      <entry key="M15" value="1.0042200234200003" />
-      <entry key="M30" value="1.13548717508308" />
-      <entry key="H1" value="1.9117579579730215" />
-      <entry key="H2" value="3.9026246544827186" />
-      <entry key="H4" value="6.691753809585808" />
-      <entry key="D1" value="11.544341245721311" />
-      <entry key="W1" value="12.778939771929526" />
+      <entry key="S5" value="1.0000000000000078" />
+      <entry key="S10" value="1.0000000887793876" />
+      <entry key="S30" value="1.0044610529887497" />
+      <entry key="S60" value="1.066791114594305" />
+      <entry key="M2" value="1.2584397712308035" />
+      <entry key="M5" value="1.582320808182693" />
+      <entry key="M10" value="1.7800269291696047" />
+      <entry key="M15" value="1.9016243367982089" />
+      <entry key="M30" value="2.2063774283286572" />
+      <entry key="H1" value="2.9264193304215302" />
+      <entry key="H2" value="4.758327381181623" />
+      <entry key="H4" value="7.6372844607219035" />
+      <entry key="D1" value="13.220924769079744" />
+      <entry key="W1" value="14.727207197872964" />
     </decayedSelected>
     <decayedShown>
-      <entry key="MS100" value="1.1644473419117667E-5" />
-      <entry key="MS500" value="0.11140708562667705" />
-      <entry key="S2" value="0.8686130767121382" />
-      <entry key="S5" value="1.4161748906001856" />
-      <entry key="S10" value="1.6796440039535474" />
-      <entry key="S30" value="1.8861147649722978" />
-      <entry key="S60" value="1.9421161269318437" />
-      <entry key="M2" value="1.9711812678214367" />
-      <entry key="M5" value="2.0303339279073818" />
-      <entry key="M10" value="2.20262134144923" />
-      <entry key="M15" value="2.415938591002743" />
-      <entry key="M30" value="4.502778884791881" />
-      <entry key="H1" value="14.54105120245537" />
-      <entry key="H2" value="36.64467206720998" />
-      <entry key="H4" value="64.05355199163294" />
-      <entry key="D1" value="107.5518385580993" />
-      <entry key="W1" value="118.1230090361271" />
+      <entry key="MS100" value="2.656709482715224E-5" />
+      <entry key="MS500" value="0.12158186842653569" />
+      <entry key="S2" value="0.5904963307147651" />
+      <entry key="S5" value="0.8100034736369214" />
+      <entry key="S10" value="0.900004205518984" />
+      <entry key="S30" value="0.9826063822848484" />
+      <entry key="S60" value="1.160702470865591" />
+      <entry key="M2" value="1.5832437419737175" />
+      <entry key="M5" value="2.6357411807176985" />
+      <entry key="M10" value="5.555074765360757" />
+      <entry key="M15" value="8.587032403361869" />
+      <entry key="M30" value="15.18252214878831" />
+      <entry key="H1" value="25.96499311388083" />
+      <entry key="H2" value="47.625905951558046" />
+      <entry key="H4" value="77.25068633146023" />
+      <entry key="D1" value="129.24244156069759" />
+      <entry key="W1" value="142.6021894898659" />
     </decayedShown>
   </component>
   <component name="ProblemsViewState">
@@ -229,7 +229,7 @@
       <workItem from="1781295647748" duration="381000" />
       <workItem from="1781296095040" duration="2608000" />
       <workItem from="1781358099575" duration="5248000" />
-      <workItem from="1781375896267" duration="23920000" />
+      <workItem from="1781375896267" duration="27483000" />
     </task>
     <servers />
   </component>
@@ -237,15 +237,41 @@
     <option name="version" value="3" />
   </component>
   <component name="UnitTestsCoverage.Settings">
-    <option name="coveragePercentColumnWidth" value="55" />
+    <option name="coveragePercentColumnWidth" value="46" />
     <option name="sortOrder" value="DESCENDING" />
     <option name="sortedColumn" value="1" />
-    <option name="symbolColumnWidth" value="221" />
+    <option name="symbolColumnWidth" value="177" />
     <coverage-tree-state>
       <expand>
         <path>
           <item name="rootNode" type="c53c71d1:RiderDotCoverCoverageTreeModel$RootNode" />
-          <item name="Total 76% 1085/4540" type="8b8fad3a:RiderDotCoverCoverageTreeNode" />
+          <item name="Total 76% 1078/4564" type="8b8fad3a:RiderDotCoverCoverageTreeNode" />
+        </path>
+        <path>
+          <item name="rootNode" type="c53c71d1:RiderDotCoverCoverageTreeModel$RootNode" />
+          <item name="Total 76% 1078/4564" type="8b8fad3a:RiderDotCoverCoverageTreeNode" />
+          <item name="jira 43% 1039/1822" type="8b8fad3a:RiderDotCoverCoverageTreeNode" />
+        </path>
+        <path>
+          <item name="rootNode" type="c53c71d1:RiderDotCoverCoverageTreeModel$RootNode" />
+          <item name="Total 76% 1078/4564" type="8b8fad3a:RiderDotCoverCoverageTreeNode" />
+          <item name="jira 43% 1039/1822" type="8b8fad3a:RiderDotCoverCoverageTreeNode" />
+          <item name="jira 46% 919/1702" type="8b8fad3a:RiderDotCoverCoverageTreeNode" />
+        </path>
+        <path>
+          <item name="rootNode" type="c53c71d1:RiderDotCoverCoverageTreeModel$RootNode" />
+          <item name="Total 76% 1078/4564" type="8b8fad3a:RiderDotCoverCoverageTreeNode" />
+          <item name="jira 43% 1039/1822" type="8b8fad3a:RiderDotCoverCoverageTreeNode" />
+          <item name="jira 46% 919/1702" type="8b8fad3a:RiderDotCoverCoverageTreeNode" />
+          <item name="Components 59% 467/1143" type="8b8fad3a:RiderDotCoverCoverageTreeNode" />
+        </path>
+        <path>
+          <item name="rootNode" type="c53c71d1:RiderDotCoverCoverageTreeModel$RootNode" />
+          <item name="Total 76% 1078/4564" type="8b8fad3a:RiderDotCoverCoverageTreeNode" />
+          <item name="jira 43% 1039/1822" type="8b8fad3a:RiderDotCoverCoverageTreeNode" />
+          <item name="jira 46% 919/1702" type="8b8fad3a:RiderDotCoverCoverageTreeNode" />
+          <item name="Components 59% 467/1143" type="8b8fad3a:RiderDotCoverCoverageTreeNode" />
+          <item name="Pages 56% 431/975" type="8b8fad3a:RiderDotCoverCoverageTreeNode" />
         </path>
       </expand>
       <select />

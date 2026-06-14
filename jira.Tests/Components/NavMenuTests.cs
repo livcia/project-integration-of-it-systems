@@ -141,4 +141,55 @@ public class NavMenuTests : BunitContext
             Assert.Contains("active",
                 cut.Find("a[href='/board/5']").ClassName ?? ""));
     }
+    
+    [Fact]
+    public async Task NavMenu_RefreshesList_WhenBoardStateServiceNotifies()
+    {
+        // Arrange
+        var db = CreateDb();
+        SetupAuth(1);
+    
+        // Używamy prawdziwego serwisu zamiast mocka, aby obsłużyć realny Event Bus
+        var boardState = new BoardStateService();
+        Services.AddSingleton(boardState); 
+
+        var cut = Render<NavMenu>();
+
+        // Assert: Brak tablic na początku
+        Assert.Contains("Brak tablic", cut.Markup);
+
+        // Act: Dodajemy tablicę do DB i wywołujemy powiadomienie
+        db.Tablice.Add(new Tablica { IdTablicy = 10, NazwaTablicy = "Nowa Tablica", IdUzytkownikaOwner = 1 });
+        await db.SaveChangesAsync();
+    
+        await boardState.NotifyBoardCreatedAsync();
+
+        // Assert: Lista powinna się zaktualizować (WaitForState czeka na zmianę w DOM)
+        cut.WaitForState(() => cut.Markup.Contains("Nowa Tablica"));
+        Assert.DoesNotContain("Brak tablic", cut.Markup);
+    }
+    
+    [Fact]
+    public async Task NavMenu_OnlyShowsUserOwnBoards()
+    {
+        // Arrange
+        var db = CreateDb();
+        // Tablica użytkownika 1
+        db.Tablice.Add(new Tablica { IdTablicy = 1, NazwaTablicy = "Moja", IdUzytkownikaOwner = 1 });
+        // Tablica użytkownika 2
+        db.Tablice.Add(new Tablica { IdTablicy = 2, NazwaTablicy = "Obca", IdUzytkownikaOwner = 2 });
+        await db.SaveChangesAsync();
+
+        SetupAuth(1); // Zalogowany użytkownik 1
+
+        // Act
+        var cut = Render<NavMenu>();
+
+        // Assert
+        cut.WaitForAssertion(() => {
+            Assert.Contains("Moja", cut.Markup);
+            Assert.DoesNotContain("Obca", cut.Markup);
+        });
+    }
+    
 }

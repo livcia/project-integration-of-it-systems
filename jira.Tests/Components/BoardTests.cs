@@ -44,10 +44,22 @@ public sealed class BoardTests : BunitContext
     private const int OwnerId     = 1;
     private const int BoardIdConst = 10;
     private const int TaskIdConst  = 100;
-
+    private readonly AppDbContext _dbContext;
     // ═══════════════════════════════════════════════════════════════════════════
     // Infrastructure / helpers
     // ═══════════════════════════════════════════════════════════════════════════
+
+    public BoardTests()
+    {
+        var options = new DbContextOptionsBuilder<AppDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .Options;
+
+        _dbContext = new AppDbContext(options);
+
+        // 4. Rejestracja w kontenerze bUnit, aby komponent mógł go wstrzyknąć
+        Services.AddSingleton(_dbContext);
+    }
 
     /// <summary>
     /// Tworzy parę (mock <see cref="IServiceScopeFactory"/>, InMemory <see cref="AppDbContext"/>).
@@ -1424,5 +1436,20 @@ public sealed class BoardTests : BunitContext
         Assert.Single(inProgressColumn.FindComponents<TicketCard>());
     }
     
+    [Fact]
+    public async Task Tablica_ShouldSetDefaultCreationDate()
+    {
+        // Arrange
+        var tablica = new Tablica { NazwaTablicy = "DataTest", IdUzytkownikaOwner = 1 };
+    
+        // Act
+        _dbContext.Tablice.Add(tablica);
+        await _dbContext.SaveChangesAsync();
+
+        // Assert
+        var saved = await _dbContext.Tablice.FirstAsync();
+        Assert.True(saved.DataStworzenia <= DateTime.UtcNow);
+        Assert.True(saved.DataStworzenia > DateTime.UtcNow.AddMinutes(-1));
+    }
     
 }
