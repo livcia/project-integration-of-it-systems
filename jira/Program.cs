@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using DotNetEnv;
 using jira;
 using jira.Components;
@@ -25,6 +26,7 @@ var connectionString = ConnectionStringHelper.Build();
 
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(connectionString));
+
 
 builder.Services
     .AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
@@ -226,3 +228,6 @@ static async Task ApplyMigrationsAsync(WebApplication app)
         logger.LogError(ex, "An error occurred while applying database migrations.");
     }
 }
+
+[ExcludeFromCodeCoverage]
+public partial class Program { }
