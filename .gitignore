@@ -57,3 +57,8 @@ TestResult.xml
 nunit-*.xml
 
 ./jira/build_errors.txt
+*/.idea/*
+*/.vscode/*
+*/.DotSettings*
+.idea/*
+.idea/.idea.project-integration-of-it-systems.dir/.idea/*
