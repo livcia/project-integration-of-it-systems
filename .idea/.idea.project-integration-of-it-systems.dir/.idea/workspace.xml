@@ -17,9 +17,9 @@
   <component name="ChangeListManager">
     <list default="true" id="5efbd7f4-79f0-4a64-a45e-070c8a06e350" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/.idea.project-integration-of-it-systems.dir/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/.idea.project-integration-of-it-systems.dir/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Folder.DotSettings.user" beforeDir="false" afterPath="$PROJECT_DIR$/Folder.DotSettings.user" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/jira.Tests/Components/BoardTests.cs" beforeDir="false" afterPath="$PROJECT_DIR$/jira.Tests/Components/BoardTests.cs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/jira.Tests/Components/NavMenuTests.cs" beforeDir="false" afterPath="$PROJECT_DIR$/jira.Tests/Components/NavMenuTests.cs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/jira.Tests/Components/TicketCreateTests.cs" beforeDir="false" afterPath="$PROJECT_DIR$/jira.Tests/Components/TicketCreateTests.cs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/jira.Tests/Services/SendGridEmailServiceTests.cs" beforeDir="false" afterPath="$PROJECT_DIR$/jira.Tests/Services/SendGridEmailServiceTests.cs" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -71,60 +71,60 @@
   <component name="NextEditCompletionFeaturesState">
     <decayedCancelled>
       <entry key="MS100" value="0.0" />
-      <entry key="MS500" value="6.754283882865484E-114" />
-      <entry key="S2" value="5.09794126508937E-29" />
-      <entry key="S5" value="4.819011148420233E-12" />
-      <entry key="S10" value="2.195224623682103E-6" />
-      <entry key="S30" value="0.012996497327900274" />
-      <entry key="S60" value="0.11400225098807545" />
-      <entry key="M2" value="0.33882190356902614" />
-      <entry key="M5" value="1.05892766268385" />
-      <entry key="M10" value="3.7699276035528375" />
-      <entry key="M15" value="6.675882518930105" />
-      <entry key="M30" value="12.96476828446039" />
-      <entry key="H1" value="23.027735287602138" />
-      <entry key="H2" value="42.85709599209173" />
-      <entry key="H4" value="69.60472927907716" />
-      <entry key="D1" value="116.01907732256035" />
-      <entry key="W1" value="127.8745975273871" />
+      <entry key="MS500" value="5.711804606175231E-112" />
+      <entry key="S2" value="1.5459424961264694E-28" />
+      <entry key="S5" value="7.510646716228413E-12" />
+      <entry key="S10" value="2.740555913720501E-6" />
+      <entry key="S30" value="0.013994140258138985" />
+      <entry key="S60" value="0.11829690351525549" />
+      <entry key="M2" value="0.34514489424070616" />
+      <entry key="M5" value="1.066788397743914" />
+      <entry key="M10" value="3.7838943786539376" />
+      <entry key="M15" value="6.692360832118294" />
+      <entry key="M30" value="12.980759117269674" />
+      <entry key="H1" value="23.041932193466128" />
+      <entry key="H2" value="42.870304942106635" />
+      <entry key="H4" value="69.6154548606546" />
+      <entry key="D1" value="116.02205674700342" />
+      <entry key="W1" value="127.87506664790615" />
     </decayedCancelled>
     <decayedSelected>
-      <entry key="MS100" value="1.0000000002312224" />
-      <entry key="MS500" value="1.0118251311950748" />
-      <entry key="S2" value="1.3297626708537238" />
-      <entry key="S5" value="1.6416239946431952" />
-      <entry key="S10" value="1.8010144246948152" />
-      <entry key="S30" value="1.9328529763417017" />
-      <entry key="S60" value="2.028062314261211" />
-      <entry key="M2" value="2.2353853872108154" />
-      <entry key="M5" value="2.5706613219345718" />
-      <entry key="M10" value="2.7734566517501653" />
-      <entry key="M15" value="2.8969420487127167" />
-      <entry key="M30" value="3.203659419909285" />
-      <entry key="H1" value="3.9246162654960837" />
-      <entry key="H2" value="5.756861272913499" />
-      <entry key="H4" value="8.636107792154881" />
-      <entry key="D1" value="14.220585258235673" />
-      <entry key="W1" value="15.72715316986527" />
+      <entry key="MS100" value="1.0" />
+      <entry key="MS500" value="1.0" />
+      <entry key="S2" value="1.0" />
+      <entry key="S5" value="1.0000000000000078" />
+      <entry key="S10" value="1.0000000887793876" />
+      <entry key="S30" value="1.0044610529887497" />
+      <entry key="S60" value="1.066791114594305" />
+      <entry key="M2" value="1.2584397712308035" />
+      <entry key="M5" value="1.582320808182693" />
+      <entry key="M10" value="1.7800269291696047" />
+      <entry key="M15" value="1.9016243367982089" />
+      <entry key="M30" value="2.2063774283286572" />
+      <entry key="H1" value="2.9264193304215302" />
+      <entry key="H2" value="4.758327381181623" />
+      <entry key="H4" value="7.6372844607219035" />
+      <entry key="D1" value="13.220924769079744" />
+      <entry key="W1" value="14.727207197872964" />
     </decayedSelected>
     <decayedShown>
-      <entry key="MS100" value="2.3122850782692756E-10" />
-      <entry key="MS500" value="0.013262852740160945" />
-      <entry key="S2" value="0.5244863179995485" />
-      <entry key="S5" value="1.1613416590729717" />
-      <entry key="S10" value="1.5219306404854485" />
-      <entry key="S30" value="1.8412662781950482" />
-      <entry key="S60" value="2.082260296546207" />
-      <entry key="M2" value="2.5359191940643275" />
-      <entry key="M5" value="3.6089508648227864" />
-      <entry key="M10" value="6.530879255164921" />
-      <entry key="M15" value="9.563426664452852" />
-      <entry key="M30" value="16.1625871046375" />
-      <entry key="H1" value="26.94837907884042" />
-      <entry key="H2" value="48.61092361910179" />
-      <entry key="H4" value="78.23863032864566" />
-      <entry key="D1" value="130.2390969594658" />
-      <entry key="W1" value="143.60166267306388" />
+      <entry key="MS100" value="2.656709482715224E-5" />
+      <entry key="MS500" value="0.12158186842653569" />
+      <entry key="S2" value="0.5904963307147651" />
+      <entry key="S5" value="0.8100034736369214" />
+      <entry key="S10" value="0.900004205518984" />
+      <entry key="S30" value="0.9826063822848484" />
+      <entry key="S60" value="1.160702470865591" />
+      <entry key="M2" value="1.5832437419737175" />
+      <entry key="M5" value="2.6357411807176985" />
+      <entry key="M10" value="5.555074765360757" />
+      <entry key="M15" value="8.587032403361869" />
+      <entry key="M30" value="15.18252214878831" />
+      <entry key="H1" value="25.96499311388083" />
+      <entry key="H2" value="47.625905951558046" />
+      <entry key="H4" value="77.25068633146023" />
+      <entry key="D1" value="129.24244156069759" />
+      <entry key="W1" value="142.6021894898659" />
     </decayedShown>
   </component>
   <component name="ProblemsViewState">
@@ -153,7 +153,7 @@
     &quot;cidr.known.project.marker&quot;: &quot;true&quot;,
     &quot;codeWithMe.voiceChat.enabledByDefault&quot;: &quot;false&quot;,
     &quot;com.intellij.ml.llm.matterhorn.ej.ui.settings.DefaultModelSelectionForGA.v1&quot;: &quot;true&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;feature/coverage&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;#37 on feature/coverage&quot;,
     &quot;junie.onboarding.icon.badge.shown&quot;: &quot;true&quot;,
     &quot;last_opened_file_path&quot;: &quot;/home/livcia/Desktop&quot;,
     &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
@@ -166,7 +166,7 @@
     &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
   }
 }</component>
-  <component name="RunManager" selected=".NET Launch Settings Profile.jira: http">
+  <component name="RunManager" selected="Docker.jira/Dockerfile">
     <configuration name="jira: http" type="LaunchSettings" factoryName=".NET Launch Settings Profile">
       <option name="LAUNCH_PROFILE_PROJECT_FILE_PATH" value="$PROJECT_DIR$/jira/jira.csproj" />
       <option name="LAUNCH_PROFILE_TFM" value="net10.0" />
@@ -210,18 +210,13 @@
       <deployment type="dockerfile">
         <settings>
           <option name="containerName" value="jira" />
-          <option name="contextFolderPath" value="." />
+          <option name="contextFolderPath" value="$PROJECT_DIR$" />
           <option name="sourceFilePath" value="jira/Dockerfile" />
         </settings>
       </deployment>
       <EXTENSION ID="com.jetbrains.rider.docker.debug" isFastModeEnabled="true" isSslEnabled="false" />
       <method v="2" />
     </configuration>
-    <list>
-      <item itemvalue=".NET Launch Settings Profile.jira: http" />
-      <item itemvalue=".NET Launch Settings Profile.jira: https" />
-      <item itemvalue="Docker.jira/Dockerfile" />
-    </list>
   </component>
   <component name="TaskManager">
     <task active="true" id="Default" summary="Default task">
@@ -235,7 +230,6 @@
       <workItem from="1781296095040" duration="2608000" />
       <workItem from="1781358099575" duration="5248000" />
       <workItem from="1781375896267" duration="27483000" />
-      <workItem from="1781419891244" duration="4060000" />
     </task>
     <servers />
   </component>
@@ -246,23 +240,38 @@
     <option name="coveragePercentColumnWidth" value="46" />
     <option name="sortOrder" value="DESCENDING" />
     <option name="sortedColumn" value="1" />
-    <option name="symbolColumnWidth" value="475" />
+    <option name="symbolColumnWidth" value="177" />
     <coverage-tree-state>
       <expand>
         <path>
           <item name="rootNode" type="c53c71d1:RiderDotCoverCoverageTreeModel$RootNode" />
-          <item name="Total 88% 502/4075" type="8b8fad3a:RiderDotCoverCoverageTreeNode" />
+          <item name="Total 76% 1078/4564" type="8b8fad3a:RiderDotCoverCoverageTreeNode" />
         </path>
         <path>
           <item name="rootNode" type="c53c71d1:RiderDotCoverCoverageTreeModel$RootNode" />
-          <item name="Total 88% 502/4075" type="8b8fad3a:RiderDotCoverCoverageTreeNode" />
-          <item name="jira 63% 463/1260" type="8b8fad3a:RiderDotCoverCoverageTreeNode" />
+          <item name="Total 76% 1078/4564" type="8b8fad3a:RiderDotCoverCoverageTreeNode" />
+          <item name="jira 43% 1039/1822" type="8b8fad3a:RiderDotCoverCoverageTreeNode" />
         </path>
         <path>
           <item name="rootNode" type="c53c71d1:RiderDotCoverCoverageTreeModel$RootNode" />
-          <item name="Total 88% 502/4075" type="8b8fad3a:RiderDotCoverCoverageTreeNode" />
-          <item name="jira 63% 463/1260" type="8b8fad3a:RiderDotCoverCoverageTreeNode" />
-          <item name="jira 63% 463/1260" type="8b8fad3a:RiderDotCoverCoverageTreeNode" />
+          <item name="Total 76% 1078/4564" type="8b8fad3a:RiderDotCoverCoverageTreeNode" />
+          <item name="jira 43% 1039/1822" type="8b8fad3a:RiderDotCoverCoverageTreeNode" />
+          <item name="jira 46% 919/1702" type="8b8fad3a:RiderDotCoverCoverageTreeNode" />
+        </path>
+        <path>
+          <item name="rootNode" type="c53c71d1:RiderDotCoverCoverageTreeModel$RootNode" />
+          <item name="Total 76% 1078/4564" type="8b8fad3a:RiderDotCoverCoverageTreeNode" />
+          <item name="jira 43% 1039/1822" type="8b8fad3a:RiderDotCoverCoverageTreeNode" />
+          <item name="jira 46% 919/1702" type="8b8fad3a:RiderDotCoverCoverageTreeNode" />
+          <item name="Components 59% 467/1143" type="8b8fad3a:RiderDotCoverCoverageTreeNode" />
+        </path>
+        <path>
+          <item name="rootNode" type="c53c71d1:RiderDotCoverCoverageTreeModel$RootNode" />
+          <item name="Total 76% 1078/4564" type="8b8fad3a:RiderDotCoverCoverageTreeNode" />
+          <item name="jira 43% 1039/1822" type="8b8fad3a:RiderDotCoverCoverageTreeNode" />
+          <item name="jira 46% 919/1702" type="8b8fad3a:RiderDotCoverCoverageTreeNode" />
+          <item name="Components 59% 467/1143" type="8b8fad3a:RiderDotCoverCoverageTreeNode" />
+          <item name="Pages 56% 431/975" type="8b8fad3a:RiderDotCoverCoverageTreeNode" />
         </path>
       </expand>
       <select />
@@ -270,17 +279,6 @@
   </component>
   <component name="UnityCheckinConfiguration" checkUnsavedScenes="true" />
   <component name="UnityProjectConfiguration" hasMinimizedUI="false" />
-  <component name="Vcs.Log.Tabs.Properties">
-    <option name="TAB_STATES">
-      <map>
-        <entry key="MAIN">
-          <value>
-            <State />
-          </value>
-        </entry>
-      </map>
-    </option>
-  </component>
   <component name="VcsManagerConfiguration">
     <option name="CLEAR_INITIAL_COMMIT_MESSAGE" value="true" />
   </component>
