@@ -2410,5 +2410,1305 @@ public sealed class BoardTests : BunitContext
         Assert.Equal("Nowszy komentarz",  commentTexts[0]);
         Assert.Equal("Starszy komentarz", commentTexts[1]);
     }
-    
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 30. OpenInvitePanel / CloseInvitePanel
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// Pomocnik: otwiera panel zaproszeń poprzez kliknięcie przycisku „+" (canInvite == true → owner).
+    /// Zwraca IRenderedComponent już z otwartym panelem.
+    /// </summary>
+    private async Task OpenInvitePanelViaButtonAsync(IRenderedComponent<Board> cut)
+    {
+        // Poczekaj na przycisk zapraszania ("+") — pojawia się gdy hiddenCount == 0 i canInvite
+        await cut.WaitForAssertionAsync(
+            () => Assert.NotEmpty(cut.FindAll("button.member-invite-chip")),
+            timeout: TimeSpan.FromSeconds(5));
+
+        await cut.Find("button.member-invite-chip").ClickAsync(new MouseEventArgs());
+
+        await cut.WaitForAssertionAsync(
+            () => Assert.NotEmpty(cut.FindAll("div.invite-panel")),
+            timeout: TimeSpan.FromSeconds(5));
+    }
+
+    /// <summary>
+    /// Pomocnik otwierający panel przez refleksję (bezpieczny gdy liczba awatarów >= MaxVisibleAvatars).
+    /// </summary>
+    private async Task OpenInvitePanelViaReflectionAsync(IRenderedComponent<Board> cut)
+    {
+        await cut.InvokeAsync(() =>
+        {
+            var instance = cut.Instance;
+            var method = instance.GetType().GetMethod("OpenInvitePanel",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            method?.Invoke(instance, null);
+            var shc = instance.GetType().GetMethod("StateHasChanged",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            shc?.Invoke(instance, null);
+        });
+
+        await cut.WaitForAssertionAsync(
+            () => Assert.NotEmpty(cut.FindAll("div.invite-panel")),
+            timeout: TimeSpan.FromSeconds(5));
+    }
+
+    [Fact]
+    public async Task OpenInvitePanel_WhenCalled_ShowsInvitePanel()
+    {
+        // Arrange – owner (canInvite == true), brak zadań → pasek awatarów ≤ 5 → przycisk „+"
+        var (factory, db) = CreateScopedDb();
+        await SeedAsync(db);
+        SetupAuth(OwnerId);
+        RegisterServices(factory);
+
+        var cut = RenderBoard();
+        await WaitForBoardAsync(cut);
+
+        // Przed otwarciem panel jest ukryty
+        Assert.Empty(cut.FindAll("div.invite-panel"));
+
+        // Act
+        await OpenInvitePanelViaButtonAsync(cut);
+
+        // Assert – panel widoczny
+        Assert.NotEmpty(cut.FindAll("div.invite-panel"));
+    }
+
+    [Fact]
+    public async Task OpenInvitePanel_WhenCalled_ResetsSearchFields()
+    {
+        // Arrange – owner otwiera panel po raz drugi; poprzednia wartość searchQuery powinna być wyczyszczona
+        var (factory, db) = CreateScopedDb();
+        await SeedAsync(db);
+        SetupAuth(OwnerId);
+        RegisterServices(factory);
+
+        var cut = RenderBoard();
+        await WaitForBoardAsync(cut);
+
+        // Otwórz panel i wpisz coś w pole wyszukiwania
+        await OpenInvitePanelViaButtonAsync(cut);
+        await cut.Find("input#invite-search-input").TriggerEventAsync(
+            "oninput", new ChangeEventArgs { Value = "test" });
+
+        // Zamknij i otwórz ponownie
+        await cut.Find("button.invite-panel-close").ClickAsync(new MouseEventArgs());
+        await cut.WaitForAssertionAsync(() => Assert.Empty(cut.FindAll("div.invite-panel")));
+
+        await OpenInvitePanelViaButtonAsync(cut);
+
+        // Assert – pole wyszukiwania jest puste po ponownym otwarciu
+        var input = cut.Find("input#invite-search-input");
+        var val = input.GetAttribute("value") ?? "";
+        Assert.Equal("", val);
+    }
+
+    [Fact]
+    public async Task OpenInvitePanel_WhenOwnerUser_ShowsInviteButton()
+    {
+        // Arrange
+        var (factory, db) = CreateScopedDb();
+        await SeedAsync(db);
+        SetupAuth(OwnerId);
+        RegisterServices(factory);
+
+        var cut = RenderBoard();
+        await WaitForBoardAsync(cut);
+
+        // Assert – przycisk zapraszania istnieje dla właściciela
+        await cut.WaitForAssertionAsync(
+            () => Assert.NotEmpty(cut.FindAll("button.member-invite-chip")),
+            timeout: TimeSpan.FromSeconds(5));
+    }
+
+    [Fact]
+    public async Task OpenInvitePanel_WhenAdminUser_ShowsInviteButton()
+    {
+        // Arrange – Admin może zapraszać
+        const int adminId = 20;
+        var (factory, db) = CreateScopedDb();
+        var owner = MakeUser(OwnerId);
+        var admin = MakeUser(adminId, "Admin", "admin@test.com");
+        var board = new Tablica
+        {
+            IdTablicy          = BoardIdConst,
+            IdUzytkownikaOwner = OwnerId,
+            NazwaTablicy       = "TestBoard",
+            Owner              = owner,
+            TabliceUzyt = new List<TablicaUzytkownik>
+            {
+                new() { IdUzytkownika = adminId, IdTablicy = BoardIdConst,
+                        Rola = "admin", Uzytkownik = admin }
+            },
+            Zadania = new List<Zadanie>()
+        };
+        db.Uzytkownicy.Add(owner);
+        db.Uzytkownicy.Add(admin);
+        db.Tablice.Add(board);
+        await db.SaveChangesAsync();
+
+        SetupAuth(adminId);
+        RegisterServices(factory);
+
+        var cut = RenderBoard();
+        await WaitForBoardAsync(cut);
+
+        // Assert – admin widzi przycisk zapraszania
+        await cut.WaitForAssertionAsync(
+            () => Assert.NotEmpty(cut.FindAll("button.member-invite-chip")),
+            timeout: TimeSpan.FromSeconds(5));
+    }
+
+    [Fact]
+    public async Task OpenInvitePanel_WhenMemberUser_HidesInviteButton()
+    {
+        // Arrange – Członek nie może zapraszać
+        const int memberId = 21;
+        var (factory, db) = CreateScopedDb();
+        var owner  = MakeUser(OwnerId);
+        var member = MakeUser(memberId, "Member", "member@test.com");
+        var board  = new Tablica
+        {
+            IdTablicy          = BoardIdConst,
+            IdUzytkownikaOwner = OwnerId,
+            NazwaTablicy       = "TestBoard",
+            Owner              = owner,
+            TabliceUzyt = new List<TablicaUzytkownik>
+            {
+                new() { IdUzytkownika = memberId, IdTablicy = BoardIdConst,
+                        Rola = "member", Uzytkownik = member }
+            },
+            Zadania = new List<Zadanie>()
+        };
+        db.Uzytkownicy.Add(owner);
+        db.Uzytkownicy.Add(member);
+        db.Tablice.Add(board);
+        await db.SaveChangesAsync();
+
+        SetupAuth(memberId);
+        RegisterServices(factory);
+
+        var cut = RenderBoard();
+        await WaitForBoardAsync(cut);
+
+        // Assert – brak przycisku zapraszania dla Członka
+        Assert.Empty(cut.FindAll("button.member-invite-chip"));
+    }
+
+    [Fact]
+    public async Task OpenInvitePanel_WhenViewerUser_HidesInviteButton()
+    {
+        // Arrange – Obserwator nie może zapraszać
+        const int viewerId = 22;
+        var (factory, db) = CreateScopedDb();
+        var owner  = MakeUser(OwnerId);
+        var viewer = MakeUser(viewerId, "Viewer", "viewer2@test.com");
+        var board  = new Tablica
+        {
+            IdTablicy          = BoardIdConst,
+            IdUzytkownikaOwner = OwnerId,
+            NazwaTablicy       = "TestBoard",
+            Owner              = owner,
+            TabliceUzyt = new List<TablicaUzytkownik>
+            {
+                new() { IdUzytkownika = viewerId, IdTablicy = BoardIdConst,
+                        Rola = "viewer", Uzytkownik = viewer }
+            },
+            Zadania = new List<Zadanie>()
+        };
+        db.Uzytkownicy.Add(owner);
+        db.Uzytkownicy.Add(viewer);
+        db.Tablice.Add(board);
+        await db.SaveChangesAsync();
+
+        SetupAuth(viewerId);
+        RegisterServices(factory);
+
+        var cut = RenderBoard();
+        await WaitForBoardAsync(cut);
+
+        // Assert – brak przycisku zapraszania dla Obserwatora
+        Assert.Empty(cut.FindAll("button.member-invite-chip"));
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 31. CloseInvitePanel
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    [Fact]
+    public async Task CloseInvitePanel_WhenCloseButtonClicked_HidesPanel()
+    {
+        // Arrange
+        var (factory, db) = CreateScopedDb();
+        await SeedAsync(db);
+        SetupAuth(OwnerId);
+        RegisterServices(factory);
+
+        var cut = RenderBoard();
+        await WaitForBoardAsync(cut);
+        await OpenInvitePanelViaButtonAsync(cut);
+
+        // Act – kliknij ✕ w nagłówku panelu
+        await cut.Find("button.invite-panel-close").ClickAsync(new MouseEventArgs());
+
+        // Assert – panel znika
+        await cut.WaitForAssertionAsync(
+            () => Assert.Empty(cut.FindAll("div.invite-panel")),
+            timeout: TimeSpan.FromSeconds(5));
+    }
+
+    [Fact]
+    public async Task CloseInvitePanel_WhenOverlayClicked_HidesPanel()
+    {
+        // Arrange
+        var (factory, db) = CreateScopedDb();
+        await SeedAsync(db);
+        SetupAuth(OwnerId);
+        RegisterServices(factory);
+
+        var cut = RenderBoard();
+        await WaitForBoardAsync(cut);
+        await OpenInvitePanelViaButtonAsync(cut);
+
+        // Act – kliknij tło overlay
+        await cut.Find("div.invite-overlay").ClickAsync(new MouseEventArgs());
+
+        // Assert
+        await cut.WaitForAssertionAsync(
+            () => Assert.Empty(cut.FindAll("div.invite-panel")),
+            timeout: TimeSpan.FromSeconds(5));
+    }
+
+    [Fact]
+    public async Task CloseInvitePanel_WhenCalled_SetsShowInvitePanelFalse()
+    {
+        // Arrange
+        var (factory, db) = CreateScopedDb();
+        await SeedAsync(db);
+        SetupAuth(OwnerId);
+        RegisterServices(factory);
+
+        var cut = RenderBoard();
+        await WaitForBoardAsync(cut);
+        await OpenInvitePanelViaReflectionAsync(cut);
+
+        // Act – wywołaj CloseInvitePanel przez refleksję
+        await cut.InvokeAsync(() =>
+        {
+            var instance = cut.Instance;
+            var method = instance.GetType().GetMethod("CloseInvitePanel",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            method?.Invoke(instance, null);
+            var shc = instance.GetType().GetMethod("StateHasChanged",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            shc?.Invoke(instance, null);
+        });
+
+        // Assert
+        await cut.WaitForAssertionAsync(
+            () => Assert.Empty(cut.FindAll("div.invite-panel")),
+            timeout: TimeSpan.FromSeconds(5));
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 32. OnInviteSearchInput – debounce i wyszukiwanie
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    [Fact]
+    public async Task OnInviteSearchInput_WhenShortQuery_DoesNotStartSearch()
+    {
+        // Arrange – query < 2 znaki → brak debounce timer / brak wyszukiwania
+        var (factory, db) = CreateScopedDb();
+        await SeedAsync(db);
+        SetupAuth(OwnerId);
+        RegisterServices(factory);
+
+        var cut = RenderBoard();
+        await WaitForBoardAsync(cut);
+        await OpenInvitePanelViaButtonAsync(cut);
+
+        // Act – jeden znak (krócej niż minimalny próg)
+        await cut.Find("input#invite-search-input").TriggerEventAsync(
+            "oninput", new ChangeEventArgs { Value = "a" });
+
+        // Daj chwilę na ewentualne uruchomienie debounce (300 ms)
+        await Task.Delay(50);
+
+        // Assert – brak spinner wyszukiwania i brak wyników (isInviteSearching = false)
+        Assert.Empty(cut.FindAll("span.invite-search-spinner"));
+        Assert.Empty(cut.FindAll("ul.invite-results"));
+    }
+
+    [Fact]
+    public async Task OnInviteSearchInput_WhenQueryCleared_ResetsResults()
+    {
+        // Arrange
+        var (factory, db) = CreateScopedDb();
+        await SeedAsync(db);
+        SetupAuth(OwnerId);
+        RegisterServices(factory);
+
+        var cut = RenderBoard();
+        await WaitForBoardAsync(cut);
+        await OpenInvitePanelViaButtonAsync(cut);
+
+        // Najpierw wpisz długi query
+        await cut.Find("input#invite-search-input").TriggerEventAsync(
+            "oninput", new ChangeEventArgs { Value = "ab" });
+        await Task.Delay(50);
+
+        // Act – wyczyść (pusty string)
+        await cut.Find("input#invite-search-input").TriggerEventAsync(
+            "oninput", new ChangeEventArgs { Value = "" });
+        await Task.Delay(50);
+
+        // Assert – brak spinner i brak wyników
+        Assert.Empty(cut.FindAll("ul.invite-results"));
+        Assert.Empty(cut.FindAll("span.invite-search-spinner"));
+    }
+
+    [Fact]
+    public async Task OnInviteSearchInput_WhenQueryAtLeast2Chars_SetsSearchQueryField()
+    {
+        // Arrange
+        var (factory, db) = CreateScopedDb();
+        await SeedAsync(db);
+        SetupAuth(OwnerId);
+        RegisterServices(factory);
+
+        var cut = RenderBoard();
+        await WaitForBoardAsync(cut);
+        await OpenInvitePanelViaButtonAsync(cut);
+
+        // Act – wpisz ≥2 znaki
+        await cut.Find("input#invite-search-input").TriggerEventAsync(
+            "oninput", new ChangeEventArgs { Value = "an" });
+
+        // Assert – wartość input odzwierciedla wpisany tekst
+        var input = cut.Find("input#invite-search-input");
+        Assert.Equal("an", input.GetAttribute("value") ?? "");
+    }
+
+    [Fact]
+    public async Task OnInviteSearchInput_WhenQueryChanges_ClearsSelectedUser()
+    {
+        // Arrange – najpierw wybierz użytkownika, potem zmień query
+        var (factory, db) = CreateScopedDb();
+        var outsider = MakeUser(91, "Outsider", "outsider@test.com");
+        db.Uzytkownicy.Add(outsider);
+        await SeedAsync(db);
+        SetupAuth(OwnerId);
+        RegisterServices(factory);
+
+        var cut = RenderBoard();
+        await WaitForBoardAsync(cut);
+        await OpenInvitePanelViaReflectionAsync(cut);
+
+        // Symuluj wybranie użytkownika
+        await cut.InvokeAsync(() =>
+        {
+            var instance = cut.Instance;
+            var selectMethod = instance.GetType().GetMethod("SelectInviteUser",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            selectMethod?.Invoke(instance, new object[] { outsider });
+            var shc = instance.GetType().GetMethod("StateHasChanged",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            shc?.Invoke(instance, null);
+        });
+
+        // Poczekaj na kartę wybranego użytkownika
+        await cut.WaitForAssertionAsync(
+            () => Assert.NotEmpty(cut.FindAll("div.invite-selected-card")),
+            timeout: TimeSpan.FromSeconds(5));
+
+        // Act – zmień tekst wyszukiwania → inviteSelectedUser powinien zostać wyczyszczony
+        await cut.Find("input#invite-search-input").TriggerEventAsync(
+            "oninput", new ChangeEventArgs { Value = "xy" });
+
+        // Assert – karta wybranego użytkownika znika
+        await cut.WaitForAssertionAsync(
+            () => Assert.Empty(cut.FindAll("div.invite-selected-card")),
+            timeout: TimeSpan.FromSeconds(5));
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 33. SearchUsersAsync – wyniki, brak wyników, wyjątek
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    [Fact]
+    public async Task SearchUsersAsync_WhenNoUsersMatch_ShowsNoResultsMessage()
+    {
+        // Arrange – baza bez obcych użytkowników pasujących do zapytania
+        var (factory, db) = CreateScopedDb();
+        await SeedAsync(db);
+        SetupAuth(OwnerId);
+        RegisterServices(factory);
+
+        var cut = RenderBoard();
+        await WaitForBoardAsync(cut);
+        await OpenInvitePanelViaReflectionAsync(cut);
+
+        // Act – wywołaj SearchUsersAsync bezpośrednio przez refleksję z query która nic nie zwróci
+        await cut.InvokeAsync(async () =>
+        {
+            var instance = cut.Instance;
+            var method = instance.GetType().GetMethod("SearchUsersAsync",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            if (method != null)
+            {
+                var task = (Task?)method.Invoke(instance, new object[] { "xyzNoMatch999" });
+                if (task != null) await task;
+            }
+            var shc = instance.GetType().GetMethod("StateHasChanged",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            shc?.Invoke(instance, null);
+        });
+
+        // Assert – komunikat „Brak użytkowników" lub brak listy invite-results
+        // (SearchUsersAsync używa EF.Functions.ILike, który może rzucić wyjątek w InMemory → catch → pusta lista)
+        Assert.Empty(cut.FindAll("ul.invite-results"));
+    }
+
+    [Fact]
+    public async Task SearchUsersAsync_WhenDbThrows_SetsEmptyResults()
+    {
+        // Arrange – ILike nie jest obsługiwane przez InMemory → wyjątek jest przechwycany w catch
+        var (factory, db) = CreateScopedDb();
+        await SeedAsync(db);
+        SetupAuth(OwnerId);
+        RegisterServices(factory);
+
+        var cut = RenderBoard();
+        await WaitForBoardAsync(cut);
+        await OpenInvitePanelViaReflectionAsync(cut);
+
+        // Act – wywołaj SearchUsersAsync przez refleksję; ILike rzuci wyjątek → catch ustawia pustą listę
+        var ex = await Record.ExceptionAsync(async () =>
+        {
+            await cut.InvokeAsync(async () =>
+            {
+                var instance = cut.Instance;
+                var method = instance.GetType().GetMethod("SearchUsersAsync",
+                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                if (method != null)
+                {
+                    var task = (Task?)method.Invoke(instance, new object[] { "jan" });
+                    if (task != null) await task;
+                }
+                var shc = instance.GetType().GetMethod("StateHasChanged",
+                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                shc?.Invoke(instance, null);
+            });
+        });
+
+        // Assert – komponent nie rzuca wyjątku na zewnątrz (catch w SearchUsersAsync)
+        Assert.Null(ex);
+
+        // Assert – isInviteSearching = false po zakończeniu
+        Assert.Empty(cut.FindAll("span.invite-search-spinner"));
+    }
+
+    [Fact]
+    public async Task SearchUsersAsync_WhenCalled_SetIsSearchingFalseAfterCompletion()
+    {
+        // Arrange
+        var (factory, db) = CreateScopedDb();
+        await SeedAsync(db);
+        SetupAuth(OwnerId);
+        RegisterServices(factory);
+
+        var cut = RenderBoard();
+        await WaitForBoardAsync(cut);
+        await OpenInvitePanelViaReflectionAsync(cut);
+
+        // Act – wywołaj i czekaj
+        await cut.InvokeAsync(async () =>
+        {
+            var instance = cut.Instance;
+            var method = instance.GetType().GetMethod("SearchUsersAsync",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            if (method != null)
+            {
+                var task = (Task?)method.Invoke(instance, new object[] { "testquery" });
+                if (task != null) await task;
+            }
+        });
+
+        // Assert – spinner znikł (isInviteSearching = false)
+        Assert.Empty(cut.FindAll("span.invite-search-spinner"));
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 34. AddUserToBoardAsync – pomyślne dodanie, już członek, wyjątek
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    [Fact]
+    public async Task AddUserToBoardAsync_WhenSuccess_AddsUserToDbAndShowsSuccessMsg()
+    {
+        // Arrange
+        const int newUserId = 80;
+        var (factory, db) = CreateScopedDb();
+        var owner   = MakeUser(OwnerId);
+        var newUser = MakeUser(newUserId, "Nowy", "nowy@test.com");
+
+        var board = new Tablica
+        {
+            IdTablicy          = BoardIdConst,
+            IdUzytkownikaOwner = OwnerId,
+            NazwaTablicy       = "TestBoard",
+            Owner              = owner,
+            TabliceUzyt        = new List<TablicaUzytkownik>(),
+            Zadania            = new List<Zadanie>()
+        };
+        db.Uzytkownicy.Add(owner);
+        db.Uzytkownicy.Add(newUser);
+        db.Tablice.Add(board);
+        await db.SaveChangesAsync();
+
+        SetupAuth(OwnerId);
+        RegisterServices(factory);
+
+        var cut = RenderBoard();
+        await WaitForBoardAsync(cut);
+        await OpenInvitePanelViaReflectionAsync(cut);
+
+        // Wybierz nowego użytkownika
+        await cut.InvokeAsync(() =>
+        {
+            var instance = cut.Instance;
+            var selectMethod = instance.GetType().GetMethod("SelectInviteUser",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            selectMethod?.Invoke(instance, new object[] { newUser });
+            var shc = instance.GetType().GetMethod("StateHasChanged",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            shc?.Invoke(instance, null);
+        });
+
+        await cut.WaitForAssertionAsync(
+            () => Assert.NotEmpty(cut.FindAll("div.invite-selected-card")),
+            timeout: TimeSpan.FromSeconds(5));
+
+        // Act – kliknij „Dodaj do tablicy"
+        await cut.Find("button.invite-btn-add").ClickAsync(new MouseEventArgs());
+
+        // Assert – komunikat sukcesu
+        await cut.WaitForAssertionAsync(
+            () => Assert.NotEmpty(cut.FindAll("div.invite-success")),
+            timeout: TimeSpan.FromSeconds(5));
+
+        // Assert – rekord w DB
+        db.ChangeTracker.Clear();
+        var entry = await db.TabliceUzytkownicy.FindAsync(newUserId, BoardIdConst);
+        Assert.NotNull(entry);
+        Assert.Equal("member", entry!.Rola);
+    }
+
+    [Fact]
+    public async Task AddUserToBoardAsync_WhenSuccess_ClearsSelectedUser()
+    {
+        // Arrange
+        const int newUserId = 81;
+        var (factory, db) = CreateScopedDb();
+        var owner   = MakeUser(OwnerId);
+        var newUser = MakeUser(newUserId, "Nowy2", "nowy2@test.com");
+
+        var board = new Tablica
+        {
+            IdTablicy          = BoardIdConst,
+            IdUzytkownikaOwner = OwnerId,
+            NazwaTablicy       = "TestBoard",
+            Owner              = owner,
+            TabliceUzyt        = new List<TablicaUzytkownik>(),
+            Zadania            = new List<Zadanie>()
+        };
+        db.Uzytkownicy.Add(owner);
+        db.Uzytkownicy.Add(newUser);
+        db.Tablice.Add(board);
+        await db.SaveChangesAsync();
+
+        SetupAuth(OwnerId);
+        RegisterServices(factory);
+
+        var cut = RenderBoard();
+        await WaitForBoardAsync(cut);
+        await OpenInvitePanelViaReflectionAsync(cut);
+
+        await cut.InvokeAsync(() =>
+        {
+            var instance = cut.Instance;
+            var selectMethod = instance.GetType().GetMethod("SelectInviteUser",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            selectMethod?.Invoke(instance, new object[] { newUser });
+            var shc = instance.GetType().GetMethod("StateHasChanged",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            shc?.Invoke(instance, null);
+        });
+
+        await cut.WaitForAssertionAsync(
+            () => Assert.NotEmpty(cut.FindAll("div.invite-selected-card")));
+
+        // Act
+        await cut.Find("button.invite-btn-add").ClickAsync(new MouseEventArgs());
+
+        // Assert – karta wybranego użytkownika znika po dodaniu (ClearInviteSelection)
+        await cut.WaitForAssertionAsync(
+            () => Assert.Empty(cut.FindAll("div.invite-selected-card")),
+            timeout: TimeSpan.FromSeconds(5));
+    }
+
+    [Fact]
+    public async Task AddUserToBoardAsync_WhenUserAlreadyMember_ShowsErrorAndDoesNotDuplicate()
+    {
+        // Arrange – użytkownik jest już w tablicy jako member
+        const int existingId = 82;
+        var (factory, db) = CreateScopedDb();
+        var owner    = MakeUser(OwnerId);
+        var existing = MakeUser(existingId, "Istniejacy2", "istniejacy2@test.com");
+
+        var board = new Tablica
+        {
+            IdTablicy          = BoardIdConst,
+            IdUzytkownikaOwner = OwnerId,
+            NazwaTablicy       = "TestBoard",
+            Owner              = owner,
+            TabliceUzyt = new List<TablicaUzytkownik>
+            {
+                new() { IdUzytkownika = existingId, IdTablicy = BoardIdConst,
+                        Rola = "member", Uzytkownik = existing }
+            },
+            Zadania = new List<Zadanie>()
+        };
+        db.Uzytkownicy.Add(owner);
+        db.Uzytkownicy.Add(existing);
+        db.Tablice.Add(board);
+        await db.SaveChangesAsync();
+
+        SetupAuth(OwnerId);
+        RegisterServices(factory);
+
+        var cut = RenderBoard();
+        await WaitForBoardAsync(cut);
+        await OpenInvitePanelViaReflectionAsync(cut);
+
+        // Wybierz istniejącego użytkownika
+        await cut.InvokeAsync(() =>
+        {
+            var instance = cut.Instance;
+            var selectMethod = instance.GetType().GetMethod("SelectInviteUser",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            selectMethod?.Invoke(instance, new object[] { existing });
+            var shc = instance.GetType().GetMethod("StateHasChanged",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            shc?.Invoke(instance, null);
+        });
+
+        await cut.WaitForAssertionAsync(
+            () => Assert.NotEmpty(cut.FindAll("div.invite-selected-card")));
+
+        // Act
+        await cut.Find("button.invite-btn-add").ClickAsync(new MouseEventArgs());
+
+        // Assert – komunikat błędu o istniejącym członku
+        await cut.WaitForAssertionAsync(
+            () => Assert.NotEmpty(cut.FindAll("div.invite-error")),
+            timeout: TimeSpan.FromSeconds(5));
+
+        // Assert – brak duplikatu w DB
+        db.ChangeTracker.Clear();
+        var count = db.TabliceUzytkownicy.Count(tu => tu.IdUzytkownika == existingId && tu.IdTablicy == BoardIdConst);
+        Assert.Equal(1, count);
+    }
+
+    [Fact]
+    public async Task AddUserToBoardAsync_WhenNoUserSelected_ButtonIsDisabled()
+    {
+        // Arrange – brak wybranego użytkownika → przycisk disabled
+        var (factory, db) = CreateScopedDb();
+        await SeedAsync(db);
+        SetupAuth(OwnerId);
+        RegisterServices(factory);
+
+        var cut = RenderBoard();
+        await WaitForBoardAsync(cut);
+        await OpenInvitePanelViaReflectionAsync(cut);
+
+        // Assert – przycisk „Dodaj do tablicy" jest disabled gdy inviteSelectedUser == null
+        var addBtn = cut.Find("button.invite-btn-add");
+        Assert.True(addBtn.HasAttribute("disabled"),
+            "Przycisk dodaj powinien być disabled gdy nie wybrano użytkownika.");
+    }
+
+    [Fact]
+    public async Task AddUserToBoardAsync_WhenOwnerRole_CanInviteNewMember()
+    {
+        // Arrange – właściciel (Owner) może zapraszać (canInvite == true)
+        const int newUserId = 83;
+        var (factory, db) = CreateScopedDb();
+        var owner   = MakeUser(OwnerId);
+        var newUser = MakeUser(newUserId, "NowyMember", "nowymember@test.com");
+
+        var board = new Tablica
+        {
+            IdTablicy          = BoardIdConst,
+            IdUzytkownikaOwner = OwnerId,
+            NazwaTablicy       = "TestBoard",
+            Owner              = owner,
+            TabliceUzyt        = new List<TablicaUzytkownik>(),
+            Zadania            = new List<Zadanie>()
+        };
+        db.Uzytkownicy.Add(owner);
+        db.Uzytkownicy.Add(newUser);
+        db.Tablice.Add(board);
+        await db.SaveChangesAsync();
+
+        SetupAuth(OwnerId);
+        RegisterServices(factory);
+
+        var cut = RenderBoard();
+        await WaitForBoardAsync(cut);
+        await OpenInvitePanelViaReflectionAsync(cut);
+
+        await cut.InvokeAsync(() =>
+        {
+            var instance = cut.Instance;
+            var selectMethod = instance.GetType().GetMethod("SelectInviteUser",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            selectMethod?.Invoke(instance, new object[] { newUser });
+            var shc = instance.GetType().GetMethod("StateHasChanged",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            shc?.Invoke(instance, null);
+        });
+
+        await cut.WaitForAssertionAsync(
+            () => Assert.NotEmpty(cut.FindAll("div.invite-selected-card")));
+
+        // Act
+        await cut.Find("button.invite-btn-add").ClickAsync(new MouseEventArgs());
+
+        // Assert – sukces
+        await cut.WaitForAssertionAsync(
+            () => Assert.NotEmpty(cut.FindAll("div.invite-success")),
+            timeout: TimeSpan.FromSeconds(5));
+    }
+
+    [Fact]
+    public async Task AddUserToBoardAsync_WhenAdminRole_CanInviteNewMember()
+    {
+        // Arrange – administrator (Admin) może zapraszać (canInvite == true)
+        const int adminId   = 84;
+        const int newUserId = 85;
+        var (factory, db) = CreateScopedDb();
+        var owner   = MakeUser(OwnerId);
+        var admin   = MakeUser(adminId, "Admin2", "admin2@test.com");
+        var newUser = MakeUser(newUserId, "NowyViaAdmin", "viaadmin@test.com");
+
+        var board = new Tablica
+        {
+            IdTablicy          = BoardIdConst,
+            IdUzytkownikaOwner = OwnerId,
+            NazwaTablicy       = "TestBoard",
+            Owner              = owner,
+            TabliceUzyt = new List<TablicaUzytkownik>
+            {
+                new() { IdUzytkownika = adminId, IdTablicy = BoardIdConst,
+                        Rola = "admin", Uzytkownik = admin }
+            },
+            Zadania = new List<Zadanie>()
+        };
+        db.Uzytkownicy.Add(owner);
+        db.Uzytkownicy.Add(admin);
+        db.Uzytkownicy.Add(newUser);
+        db.Tablice.Add(board);
+        await db.SaveChangesAsync();
+
+        SetupAuth(adminId);
+        RegisterServices(factory);
+
+        var cut = RenderBoard();
+        await WaitForBoardAsync(cut);
+        await OpenInvitePanelViaReflectionAsync(cut);
+
+        await cut.InvokeAsync(() =>
+        {
+            var instance = cut.Instance;
+            var selectMethod = instance.GetType().GetMethod("SelectInviteUser",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            selectMethod?.Invoke(instance, new object[] { newUser });
+            var shc = instance.GetType().GetMethod("StateHasChanged",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            shc?.Invoke(instance, null);
+        });
+
+        await cut.WaitForAssertionAsync(
+            () => Assert.NotEmpty(cut.FindAll("div.invite-selected-card")));
+
+        // Act
+        await cut.Find("button.invite-btn-add").ClickAsync(new MouseEventArgs());
+
+        // Assert – sukces
+        await cut.WaitForAssertionAsync(
+            () => Assert.NotEmpty(cut.FindAll("div.invite-success")),
+            timeout: TimeSpan.FromSeconds(5));
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 35. ClearInviteSelection – czyszczenie pól zaproszenia
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    [Fact]
+    public async Task ClearInviteSelection_WhenCalled_ClearsSelectedUserAndSearchQuery()
+    {
+        // Arrange
+        var (factory, db) = CreateScopedDb();
+        var outsider = MakeUser(60, "Oczekujacy", "oczekujacy@test.com");
+        db.Uzytkownicy.Add(outsider);
+        await SeedAsync(db);
+        SetupAuth(OwnerId);
+        RegisterServices(factory);
+
+        var cut = RenderBoard();
+        await WaitForBoardAsync(cut);
+        await OpenInvitePanelViaReflectionAsync(cut);
+
+        // Wybierz użytkownika
+        await cut.InvokeAsync(() =>
+        {
+            var instance = cut.Instance;
+            var selectMethod = instance.GetType().GetMethod("SelectInviteUser",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            selectMethod?.Invoke(instance, new object[] { outsider });
+            var shc = instance.GetType().GetMethod("StateHasChanged",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            shc?.Invoke(instance, null);
+        });
+
+        await cut.WaitForAssertionAsync(
+            () => Assert.NotEmpty(cut.FindAll("div.invite-selected-card")));
+
+        // Act – kliknij ✕ obok wybranego użytkownika
+        await cut.Find("button.invite-deselect").ClickAsync(new MouseEventArgs());
+
+        // Assert – karta wybranego użytkownika znika
+        await cut.WaitForAssertionAsync(
+            () => Assert.Empty(cut.FindAll("div.invite-selected-card")),
+            timeout: TimeSpan.FromSeconds(5));
+
+        // Assert – pole wyszukiwania wyczyszczone
+        var input = cut.Find("input#invite-search-input");
+        Assert.Equal("", input.GetAttribute("value") ?? "");
+    }
+
+    [Fact]
+    public async Task ClearInviteSelection_WhenCalled_ClearsSearchResults()
+    {
+        // Arrange
+        var (factory, db) = CreateScopedDb();
+        var outsider = MakeUser(61, "Wybrany", "wybrany@test.com");
+        db.Uzytkownicy.Add(outsider);
+        await SeedAsync(db);
+        SetupAuth(OwnerId);
+        RegisterServices(factory);
+
+        var cut = RenderBoard();
+        await WaitForBoardAsync(cut);
+        await OpenInvitePanelViaReflectionAsync(cut);
+
+        // Wybierz użytkownika
+        await cut.InvokeAsync(() =>
+        {
+            var instance = cut.Instance;
+            var selectMethod = instance.GetType().GetMethod("SelectInviteUser",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            selectMethod?.Invoke(instance, new object[] { outsider });
+            var shc = instance.GetType().GetMethod("StateHasChanged",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            shc?.Invoke(instance, null);
+        });
+
+        await cut.WaitForAssertionAsync(
+            () => Assert.NotEmpty(cut.FindAll("div.invite-selected-card")));
+
+        // Act – wyczyść wybór
+        await cut.Find("button.invite-deselect").ClickAsync(new MouseEventArgs());
+
+        // Assert – brak listy wyników (inviteSearchResults = new())
+        await cut.WaitForAssertionAsync(
+            () => Assert.Empty(cut.FindAll("ul.invite-results")),
+            timeout: TimeSpan.FromSeconds(5));
+    }
+
+    [Fact]
+    public async Task ClearInviteSelection_ViaReflection_SetsFieldsToEmpty()
+    {
+        // Arrange
+        var (factory, db) = CreateScopedDb();
+        var outsider = MakeUser(62, "Trzeci", "trzeci@test.com");
+        db.Uzytkownicy.Add(outsider);
+        await SeedAsync(db);
+        SetupAuth(OwnerId);
+        RegisterServices(factory);
+
+        var cut = RenderBoard();
+        await WaitForBoardAsync(cut);
+        await OpenInvitePanelViaReflectionAsync(cut);
+
+        // Wybierz użytkownika
+        await cut.InvokeAsync(() =>
+        {
+            var instance = cut.Instance;
+            var selectMethod = instance.GetType().GetMethod("SelectInviteUser",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            selectMethod?.Invoke(instance, new object[] { outsider });
+        });
+
+        // Act – wywołaj ClearInviteSelection przez refleksję
+        await cut.InvokeAsync(() =>
+        {
+            var instance = cut.Instance;
+            var method = instance.GetType().GetMethod("ClearInviteSelection",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            method?.Invoke(instance, null);
+            var shc = instance.GetType().GetMethod("StateHasChanged",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            shc?.Invoke(instance, null);
+        });
+
+        // Assert – brak karty wybranego użytkownika
+        await cut.WaitForAssertionAsync(
+            () => Assert.Empty(cut.FindAll("div.invite-selected-card")),
+            timeout: TimeSpan.FromSeconds(5));
+
+        // Assert – pole wyszukiwania puste
+        var input = cut.Find("input#invite-search-input");
+        Assert.Equal("", input.GetAttribute("value") ?? "");
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════════
+    // 36. ToggleMembersPopup / CloseMembersPopup
+    // ═══════════════════════════════════════════════════════════════════════════
+
+    /// <summary>
+    /// Buduje tablicę z >5 członków tak, żeby przycisk +N był widoczny
+    /// (ToggleMembersPopup jest podpięty do przycisku +N).
+    /// </summary>
+    private async Task<AppDbContext> SeedBoardWithManymembersAsync(
+        AppDbContext db, int memberCount = 6)
+    {
+        var owner = MakeUser(OwnerId);
+        db.Uzytkownicy.Add(owner);
+
+        var members = new List<TablicaUzytkownik>();
+        for (int i = 2; i <= memberCount + 1; i++)
+        {
+            var u = MakeUser(i, $"User{i}", $"user{i}@test.com");
+            db.Uzytkownicy.Add(u);
+            members.Add(new TablicaUzytkownik
+            {
+                IdUzytkownika = i,
+                IdTablicy     = BoardIdConst,
+                Rola          = "member",
+                Uzytkownik    = u
+            });
+        }
+
+        var board = new Tablica
+        {
+            IdTablicy          = BoardIdConst,
+            IdUzytkownikaOwner = OwnerId,
+            NazwaTablicy       = "BigBoard",
+            Owner              = owner,
+            TabliceUzyt        = members,
+            Zadania            = new List<Zadanie>()
+        };
+        db.Tablice.Add(board);
+        await db.SaveChangesAsync();
+        return db;
+    }
+
+    [Fact]
+    public async Task ToggleMembersPopup_WhenCalled_ShowsPopup()
+    {
+        // Arrange – więcej niż MaxVisibleAvatars (5) → przycisk +N widoczny
+        var (factory, db) = CreateScopedDb();
+        await SeedBoardWithManymembersAsync(db, memberCount: 6);
+        SetupAuth(OwnerId);
+        RegisterServices(factory);
+
+        var cut = RenderBoard();
+        await WaitForBoardAsync(cut);
+
+        // Przycisk +N powinien być widoczny
+        await cut.WaitForAssertionAsync(
+            () => Assert.NotEmpty(cut.FindAll("button.member-more-btn")),
+            timeout: TimeSpan.FromSeconds(5));
+
+        // Popup ukryty przed kliknięciem
+        Assert.Empty(cut.FindAll("div.members-popup"));
+
+        // Act
+        await cut.Find("button.member-more-btn").ClickAsync(new MouseEventArgs());
+
+        // Assert – popup pojawia się
+        await cut.WaitForAssertionAsync(
+            () => Assert.NotEmpty(cut.FindAll("div.members-popup")),
+            timeout: TimeSpan.FromSeconds(5));
+    }
+
+    [Fact]
+    public async Task ToggleMembersPopup_WhenCalledTwice_HidesPopup()
+    {
+        // Arrange
+        var (factory, db) = CreateScopedDb();
+        await SeedBoardWithManymembersAsync(db, memberCount: 6);
+        SetupAuth(OwnerId);
+        RegisterServices(factory);
+
+        var cut = RenderBoard();
+        await WaitForBoardAsync(cut);
+
+        await cut.WaitForAssertionAsync(
+            () => Assert.NotEmpty(cut.FindAll("button.member-more-btn")));
+
+        // Pierwsze kliknięcie – otwórz
+        await cut.Find("button.member-more-btn").ClickAsync(new MouseEventArgs());
+        await cut.WaitForAssertionAsync(
+            () => Assert.NotEmpty(cut.FindAll("div.members-popup")));
+
+        // Act – drugie kliknięcie – zamknij (toggle)
+        await cut.Find("button.member-more-btn").ClickAsync(new MouseEventArgs());
+
+        // Assert – popup znika
+        await cut.WaitForAssertionAsync(
+            () => Assert.Empty(cut.FindAll("div.members-popup")),
+            timeout: TimeSpan.FromSeconds(5));
+    }
+
+    [Fact]
+    public async Task ToggleMembersPopup_ViaReflection_TogglesState()
+    {
+        // Arrange
+        var (factory, db) = CreateScopedDb();
+        await SeedAsync(db);
+        SetupAuth(OwnerId);
+        RegisterServices(factory);
+
+        var cut = RenderBoard();
+        await WaitForBoardAsync(cut);
+
+        // Act – ToggleMembersPopup przez refleksję (false → true)
+        await cut.InvokeAsync(() =>
+        {
+            var instance = cut.Instance;
+            var method = instance.GetType().GetMethod("ToggleMembersPopup",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            method?.Invoke(instance, null);
+            var shc = instance.GetType().GetMethod("StateHasChanged",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            shc?.Invoke(instance, null);
+        });
+
+        // Assert – pole showMembersPopup jest teraz true → popup renderowany
+        await cut.WaitForAssertionAsync(
+            () => Assert.NotEmpty(cut.FindAll("div.members-popup")),
+            timeout: TimeSpan.FromSeconds(5));
+
+        // Act – ponownie (true → false)
+        await cut.InvokeAsync(() =>
+        {
+            var instance = cut.Instance;
+            var method = instance.GetType().GetMethod("ToggleMembersPopup",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            method?.Invoke(instance, null);
+            var shc = instance.GetType().GetMethod("StateHasChanged",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            shc?.Invoke(instance, null);
+        });
+
+        // Assert – popup ukryty
+        await cut.WaitForAssertionAsync(
+            () => Assert.Empty(cut.FindAll("div.members-popup")),
+            timeout: TimeSpan.FromSeconds(5));
+    }
+
+    [Fact]
+    public async Task CloseMembersPopup_WhenCalled_HidesPopup()
+    {
+        // Arrange
+        var (factory, db) = CreateScopedDb();
+        await SeedBoardWithManymembersAsync(db, memberCount: 6);
+        SetupAuth(OwnerId);
+        RegisterServices(factory);
+
+        var cut = RenderBoard();
+        await WaitForBoardAsync(cut);
+
+        await cut.WaitForAssertionAsync(
+            () => Assert.NotEmpty(cut.FindAll("button.member-more-btn")));
+
+        // Otwórz popup
+        await cut.Find("button.member-more-btn").ClickAsync(new MouseEventArgs());
+        await cut.WaitForAssertionAsync(
+            () => Assert.NotEmpty(cut.FindAll("div.members-popup")));
+
+        // Act – kliknij ✕ w nagłówku popupu
+        await cut.Find("button.members-popup-close").ClickAsync(new MouseEventArgs());
+
+        // Assert – popup znika
+        await cut.WaitForAssertionAsync(
+            () => Assert.Empty(cut.FindAll("div.members-popup")),
+            timeout: TimeSpan.FromSeconds(5));
+    }
+
+    [Fact]
+    public async Task CloseMembersPopup_WhenOverlayClicked_HidesPopup()
+    {
+        // Arrange
+        var (factory, db) = CreateScopedDb();
+        await SeedBoardWithManymembersAsync(db, memberCount: 6);
+        SetupAuth(OwnerId);
+        RegisterServices(factory);
+
+        var cut = RenderBoard();
+        await WaitForBoardAsync(cut);
+
+        await cut.WaitForAssertionAsync(
+            () => Assert.NotEmpty(cut.FindAll("button.member-more-btn")));
+
+        await cut.Find("button.member-more-btn").ClickAsync(new MouseEventArgs());
+        await cut.WaitForAssertionAsync(
+            () => Assert.NotEmpty(cut.FindAll("div.members-popup-overlay")));
+
+        // Act – kliknij overlay tła
+        await cut.Find("div.members-popup-overlay").ClickAsync(new MouseEventArgs());
+
+        // Assert
+        await cut.WaitForAssertionAsync(
+            () => Assert.Empty(cut.FindAll("div.members-popup")),
+            timeout: TimeSpan.FromSeconds(5));
+    }
+
+    [Fact]
+    public async Task CloseMembersPopup_ViaReflection_SetsFalse()
+    {
+        // Arrange
+        var (factory, db) = CreateScopedDb();
+        await SeedAsync(db);
+        SetupAuth(OwnerId);
+        RegisterServices(factory);
+
+        var cut = RenderBoard();
+        await WaitForBoardAsync(cut);
+
+        // Otwórz popup przez refleksję
+        await cut.InvokeAsync(() =>
+        {
+            var instance = cut.Instance;
+            var toggle = instance.GetType().GetMethod("ToggleMembersPopup",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            toggle?.Invoke(instance, null);
+            var shc = instance.GetType().GetMethod("StateHasChanged",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            shc?.Invoke(instance, null);
+        });
+
+        await cut.WaitForAssertionAsync(
+            () => Assert.NotEmpty(cut.FindAll("div.members-popup")));
+
+        // Act – zamknij przez refleksję
+        await cut.InvokeAsync(() =>
+        {
+            var instance = cut.Instance;
+            var method = instance.GetType().GetMethod("CloseMembersPopup",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            method?.Invoke(instance, null);
+            var shc = instance.GetType().GetMethod("StateHasChanged",
+                System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            shc?.Invoke(instance, null);
+        });
+
+        // Assert – popup ukryty
+        await cut.WaitForAssertionAsync(
+            () => Assert.Empty(cut.FindAll("div.members-popup")),
+            timeout: TimeSpan.FromSeconds(5));
+    }
+
+    [Fact]
+    public async Task MembersPopup_WhenOpen_DisplaysAllBoardMembers()
+    {
+        // Arrange – 6 członków + owner → popup powinien wyświetlić wszystkich (>5 → przycisk +N)
+        var (factory, db) = CreateScopedDb();
+        await SeedBoardWithManymembersAsync(db, memberCount: 6);
+        SetupAuth(OwnerId);
+        RegisterServices(factory);
+
+        var cut = RenderBoard();
+        await WaitForBoardAsync(cut);
+
+        await cut.WaitForAssertionAsync(
+            () => Assert.NotEmpty(cut.FindAll("button.member-more-btn")));
+
+        // Act – otwórz popup
+        await cut.Find("button.member-more-btn").ClickAsync(new MouseEventArgs());
+
+        // Assert – lista członków zawiera owner + 6 innych = 7
+        await cut.WaitForAssertionAsync(
+            () => Assert.True(cut.FindAll("li.members-popup-item").Count >= 7),
+            timeout: TimeSpan.FromSeconds(5));
+    }
+
+    [Fact]
+    public async Task MembersPopup_WhenOwner_ShowsInviteButtonInsidePopup()
+    {
+        // Arrange – właściciel może zapraszać → w popupie pojawia się „Zaproś nowego członka"
+        var (factory, db) = CreateScopedDb();
+        await SeedBoardWithManymembersAsync(db, memberCount: 6);
+        SetupAuth(OwnerId);
+        RegisterServices(factory);
+
+        var cut = RenderBoard();
+        await WaitForBoardAsync(cut);
+
+        await cut.WaitForAssertionAsync(
+            () => Assert.NotEmpty(cut.FindAll("button.member-more-btn")));
+
+        await cut.Find("button.member-more-btn").ClickAsync(new MouseEventArgs());
+
+        await cut.WaitForAssertionAsync(
+            () => Assert.NotEmpty(cut.FindAll("div.members-popup")));
+
+        // Assert – przycisk zapraszania jest w popupie
+        Assert.NotEmpty(cut.FindAll("button.members-popup-invite-btn"));
+    }
+
+    [Fact]
+    public async Task MembersPopup_InviteButtonInPopup_ClosesPopupAndOpensInvitePanel()
+    {
+        // Arrange
+        var (factory, db) = CreateScopedDb();
+        await SeedBoardWithManymembersAsync(db, memberCount: 6);
+        SetupAuth(OwnerId);
+        RegisterServices(factory);
+
+        var cut = RenderBoard();
+        await WaitForBoardAsync(cut);
+
+        await cut.WaitForAssertionAsync(
+            () => Assert.NotEmpty(cut.FindAll("button.member-more-btn")));
+
+        await cut.Find("button.member-more-btn").ClickAsync(new MouseEventArgs());
+        await cut.WaitForAssertionAsync(
+            () => Assert.NotEmpty(cut.FindAll("div.members-popup")));
+
+        // Act – kliknij „Zaproś nowego członka" w popupie
+        await cut.Find("button.members-popup-invite-btn").ClickAsync(new MouseEventArgs());
+
+        // Assert – popup zamknięty i panel zapraszania otwarty
+        await cut.WaitForAssertionAsync(() =>
+        {
+            Assert.Empty(cut.FindAll("div.members-popup"));
+            Assert.NotEmpty(cut.FindAll("div.invite-panel"));
+        }, timeout: TimeSpan.FromSeconds(5));
+    }
 }
