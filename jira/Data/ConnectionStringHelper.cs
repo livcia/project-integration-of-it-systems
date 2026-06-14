@@ -4,13 +4,13 @@ public static class ConnectionStringHelper
 {
     public static string Build()
     {
-        var host = GetRequired("POSTGRES_HOST");
-        var port = GetRequired("POSTGRES_PORT");
-        var db = GetRequired("POSTGRES_DB");
-        var user = GetRequired("POSTGRES_USER");
-        var pass = GetRequired("POSTGRES_PASSWORD");
+        var postgresHost = GetRequired("POSTGRES_HOST");
+        var postgresPort = GetRequired("POSTGRES_PORT");
+        var postgresDatabase = GetRequired("POSTGRES_DB");
+        var postgresUser = GetRequired("POSTGRES_USER");
+        var postgresPassword = GetRequired("POSTGRES_PASSWORD");
 
-        return $"Host={host};Port={port};Database={db};Username={user};Password={pass};" +
+        return $"Host={postgresHost};Port={postgresPort};Database={postgresDatabase};Username={postgresUser};Password={postgresPassword};" +
                "Trust Server Certificate=true;SSL Mode=Disable";
     }
 

@@ -68,17 +68,15 @@
     }
 
     // Deterministyczny wielocyfrowy ID oparty na prawdziwym ID zadania
-    // Daje liczby 6-cyfrowe, np. 184523, 290041 — stabilne dla tego samego ticketu
     private string DisplayId
     {
         get
         {
-            // Seed bazuje na IdZadania — zawsze deterministyczny
             var seed = Task.IdZadania * 131071 + 47;
             var pseudo = (seed ^ (seed >> 16)) * 0x45d9f3b;
             pseudo = (pseudo ^ (pseudo >> 16)) * 0x45d9f3b;
             pseudo = pseudo ^ (pseudo >> 16);
-            var display = Math.Abs(pseudo) % 900_000 + 100_000; // 100000–999999
+            var display = Math.Abs(pseudo) % 900_000 + 100_000;
             return display.ToString();
         }
     }

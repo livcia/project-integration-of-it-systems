@@ -7,6 +7,8 @@ using jira.Services;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.Google;
+using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -38,6 +40,10 @@ builder.Services
         options.Cookie.Name = "jira.auth";
         options.Cookie.HttpOnly = true;
         options.Cookie.SameSite = SameSiteMode.Lax;
+        // In Docker over plain HTTP we must NOT require Secure flag
+        options.Cookie.SecurePolicy = isInContainer
+            ? CookieSecurePolicy.None
+            : CookieSecurePolicy.SameAsRequest;
         options.ExpireTimeSpan = TimeSpan.FromDays(7);
         options.SlidingExpiration = true;
     })
@@ -78,23 +84,53 @@ builder.Services.AddAuthorization();
 builder.Services.AddScoped<BoardStateService>();
 builder.Services.AddScoped<IEmailService, SendGridEmailService>();
 
+builder.Services.AddHttpClient<WeatherService>();
+
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
+// Allow antiforgery cookie to work over HTTP in Docker
+builder.Services.AddAntiforgery(options =>
+{
+    options.Cookie.Name = "jira.af";
+    options.Cookie.SameSite = SameSiteMode.Lax;
+    options.Cookie.SecurePolicy = isInContainer
+        ? CookieSecurePolicy.None
+        : CookieSecurePolicy.SameAsRequest;
+});
+
 builder.Services.AddControllers();
+builder.Services.AddHealthChecks();
+
+// Configure ForwardedHeaders so the app respects X-Forwarded-Proto from proxies
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    options.KnownIPNetworks.Clear();
+    options.KnownProxies.Clear();
+});
 
 var app = builder.Build();
 
 await ApplyMigrationsAsync(app);
 
+// Must be first in pipeline to correctly interpret forwarded headers from proxies
+app.UseForwardedHeaders();
+
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Error", createScopeForErrors: true);
-    app.UseHsts();
+    if (!isInContainer)
+    {
+        app.UseHsts();
+    }
 }
 
 app.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages: true);
-app.UseHttpsRedirection();
+if (!isInContainer)
+{
+    app.UseHttpsRedirection();
+}
 app.UseStaticFiles();
 app.UseAuthentication();
 app.UseAuthorization();
@@ -206,10 +242,11 @@ app.MapGet("/api/auth/logout", async (HttpContext ctx) =>
     return Results.Redirect("/login");
 });
 
-app.MapStaticAssets();
 app.MapControllers();
+app.MapHealthChecks("/health");
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
+app.MapStaticAssets();
 
 app.Run();
 
