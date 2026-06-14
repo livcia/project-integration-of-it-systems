@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using DotNetEnv;
 using jira.Data;
 using Microsoft.EntityFrameworkCore;
@@ -5,6 +6,7 @@ using Microsoft.EntityFrameworkCore.Design;
 
 namespace jira;
 
+[ExcludeFromCodeCoverage]
 public class AppDbContextFactory : IDesignTimeDbContextFactory<AppDbContext>
 {
     public AppDbContext CreateDbContext(string[] args)

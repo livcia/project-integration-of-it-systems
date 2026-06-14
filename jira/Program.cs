@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using DotNetEnv;
 using jira;
 using jira.Components;
@@ -23,25 +24,15 @@ if (File.Exists(envRoot))
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Detect whether the app is running inside a Docker container
+var isInContainer = File.Exists("/.dockerenv")
+    || string.Equals(Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER"), "true", StringComparison.OrdinalIgnoreCase);
+
 var connectionString = ConnectionStringHelper.Build();
 
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(connectionString));
 
-// ── DataProtection: persist keys to a volume so antiforgery tokens survive restarts ──
-var isInContainer = Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER") == "true"
-                    || Environment.GetEnvironmentVariable("RUNNING_IN_DOCKER") == "true";
-
-var dpBuilder = builder.Services.AddDataProtection()
-    .SetApplicationName("jira-app");
-
-if (isInContainer)
-{
-    // Path must match the Docker volume mount in docker-compose.yml
-    var keysPath = "/app/dataprotection-keys";
-    Directory.CreateDirectory(keysPath);
-    dpBuilder.PersistKeysToFileSystem(new DirectoryInfo(keysPath));
-}
 
 builder.Services
     .AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
@@ -278,3 +269,6 @@ static async Task ApplyMigrationsAsync(WebApplication app)
         logger.LogError(ex, "An error occurred while applying database migrations.");
     }
 }
+
+[ExcludeFromCodeCoverage]
+public partial class Program { }
