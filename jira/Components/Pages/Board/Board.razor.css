@@ -1,8 +1,4 @@
-/* ══════════════════════════════════════════════
-   Board.razor – scoped styles
-   ══════════════════════════════════════════════ */
 
-/* ── Loading / not-found ─────────────────────── */
 .board-loading {
     display: flex;
     align-items: center;
@@ -38,22 +34,16 @@
     font-weight: 500;
 }
 
-/* ── Kanban board container ──────────────────── */
-/*
-   Height: viewport minus the approx top area (navbar + board header + padding).
-   Adjust the subtracted value (here 160px) to match your layout's actual offset.
-*/
 .kanban-board {
     display: flex;
     gap: 0.9rem;
-    align-items: stretch;       /* all columns same height */
+    align-items: stretch;
     height: calc(100vh - 160px);
     min-height: 300px;
     padding-bottom: 0.5rem;
-    overflow-x: auto;           /* horizontal scroll when window is very narrow */
+    overflow-x: auto;
 }
 
-/* ── Title bar ───────────────────────────────── */
 .board-title-group {
     display: flex;
     align-items: center;
@@ -75,7 +65,6 @@
     color: #172b4d;
 }
 
-/* ── Delete button ───────────────────────────── */
 .board-btn-delete {
     display: inline-flex;
     align-items: center;
@@ -97,7 +86,6 @@
     transform: translateY(-1px);
 }
 
-/* ── Members avatar strip ────────────────────── */
 .members-strip {
     display: flex;
     align-items: center;
@@ -142,7 +130,6 @@
     border-radius: 50%;
 }
 
-/* Tooltip on hover */
 .member-avatar-tooltip {
     display: none;
     position: absolute;
@@ -175,7 +162,6 @@
     display: block;
 }
 
-/* Large variant (popup) */
 .member-avatar-chip--lg {
     width: 36px;
     height: 36px;
@@ -186,7 +172,6 @@
     flex-shrink: 0;
 }
 
-/* "... more" button */
 .member-more-btn {
     width: 32px;
     height: 32px;
@@ -212,7 +197,6 @@
     box-shadow: 0 4px 10px rgba(9,30,66,0.18);
 }
 
-/* "+" invite chip */
 .member-invite-chip {
     width: 32px;
     height: 32px;
@@ -238,7 +222,6 @@
     transform: translateY(-2px);
 }
 
-/* ── Members popup ────────────────────────────── */
 .members-popup-overlay {
     position: fixed;
     inset: 0;
@@ -358,7 +341,6 @@
     transform: translateY(-1px);
 }
 
-/* ── Delete confirm overlay ──────────────────── */
 .board-delete-overlay {
     position: fixed;
     inset: 0;
@@ -451,10 +433,6 @@
     animation: boardSpin 0.65s linear infinite;
 }
 
-/* ══════════════════════════════════════════════
-   INVITE PANEL
-   ══════════════════════════════════════════════ */
-
 .invite-overlay {
     position: fixed;
     inset: 0;
@@ -482,7 +460,6 @@
     to   { transform: translateX(0); }
 }
 
-/* ── Panel header ─────────────────────────────── */
 .invite-panel-header {
     display: flex;
     align-items: center;
@@ -513,12 +490,10 @@
 
 .invite-panel-close:hover { background: #ebecf0; color: #172b4d; }
 
-/* ── Scrollable body ─────────────────────────── */
 .invite-panel {
     overflow-y: auto;
 }
 
-/* ── Search input ────────────────────────────── */
 .invite-search-wrap {
     position: relative;
     padding: 1.25rem 1.5rem 0.75rem;
@@ -568,7 +543,6 @@
     animation: boardSpin 0.6s linear infinite;
 }
 
-/* ── Search results ──────────────────────────── */
 .invite-results {
     list-style: none;
     margin: 0;
@@ -642,7 +616,6 @@
     font-style: italic;
 }
 
-/* ── Selected user card ─────────────────────── */
 .invite-selected-card {
     display: flex;
     align-items: center;
@@ -694,7 +667,6 @@
 
 .invite-deselect:hover { color: #de350b; background: rgba(222,53,11,0.08); }
 
-/* ── Role picker ─────────────────────────────── */
 .invite-role-wrap {
     padding: 1rem 1.5rem;
 }
@@ -754,7 +726,6 @@
     color: #6b778c;
 }
 
-/* ── Feedback messages ───────────────────────── */
 .invite-success {
     margin: 0 1.5rem 0.5rem;
     padding: 0.65rem 1rem;
@@ -776,7 +747,6 @@
     font-size: 0.85rem;
 }
 
-/* ── Current members ─────────────────────────── */
 .invite-members-section {
     padding: 0.75rem 1.5rem;
     border-top: 1px solid #ebecf0;
@@ -852,7 +822,6 @@
     font-weight: 400;
 }
 
-/* ── Footer / Add button ─────────────────────── */
 .invite-panel-footer {
     padding: 1rem 1.5rem;
     border-top: 1px solid #ebecf0;
@@ -895,10 +864,6 @@
     animation: boardSpin 0.65s linear infinite;
 }
 
-/* ══════════════════════════════════════════════
-   TICKET DETAIL MODAL (Blazor-driven)
-   ══════════════════════════════════════════════ */
-
 .ticket-modal-overlay {
     position: fixed;
     inset: 0;
@@ -924,7 +889,6 @@
     flex-direction: column;
 }
 
-/* ── Header ───────────────────────────────────── */
 .ticket-modal-header {
     display: flex;
     align-items: flex-start;
@@ -975,7 +939,6 @@
 
 .ticket-modal-close:hover { background: #ebecf0; color: #172b4d; }
 
-/* ── Body ─────────────────────────────────────── */
 .ticket-modal-body {
     display: flex;
     gap: 0;
@@ -1022,7 +985,6 @@
     font-style: italic;
 }
 
-/* ── Right-column fields ──────────────────────── */
 .ticket-modal-field {
     display: flex;
     flex-direction: column;
@@ -1092,7 +1054,6 @@
     margin-top: 0.25rem;
 }
 
-/* ── Priority badges (shared with TicketCard) ─── */
 .ticket-priority-badge {
     display: inline-block;
     font-size: 0.68rem;
@@ -1114,7 +1075,6 @@
 .ticket-priority-badge--niski,
 .ticket-priority-badge--low    { background: #e3fcef; color: #00875a; }
 
-/* ── Footer ───────────────────────────────────── */
 .ticket-modal-footer {
     display: flex;
     align-items: center;
@@ -1162,7 +1122,6 @@
 
 .ticket-modal-btn-close:hover { background: #ebecf0; }
 
-/* ── Responsive ───────────────────────────────── */
 @@media (max-width: 640px) {
     .ticket-modal-body {
         flex-direction: column;
@@ -1178,11 +1137,6 @@
     }
 }
 
-/* ══════════════════════════════════════════════
-   ASSIGN WIDGET (inside ticket modal right panel)
-   ══════════════════════════════════════════════ */
-
-/* Widen right panel to fit the search widget */
 .ticket-modal-right {
     width: 240px;
 }
@@ -1193,7 +1147,6 @@
     gap: 0.45rem;
 }
 
-/* Row: current assignee name + change button */
 .assign-current {
     display: flex;
     align-items: center;
@@ -1251,7 +1204,6 @@
 
 .assign-change-btn:hover { background: #ebecf0; color: #172b4d; }
 
-/* Empty row: "Nieprzypisane" + "+ Przypisz" button */
 .assign-empty-row {
     display: flex;
     align-items: center;
@@ -1274,7 +1226,6 @@
 
 .assign-open-btn:hover { background: #e6effc; }
 
-/* Search input row */
 .assign-search-wrap {
     display: flex;
     align-items: center;
@@ -1323,7 +1274,6 @@
 
 .assign-cancel-btn:hover { background: #ebecf0; color: #de350b; }
 
-/* Results list */
 .assign-results {
     list-style: none;
     margin: 0;
@@ -1403,7 +1353,6 @@
     padding: 0.2rem 0;
 }
 
-/* "Przypisz do mnie" button */
 .assign-me-btn {
     display: flex;
     align-items: center;
@@ -1428,10 +1377,6 @@
     transform: translateY(-1px);
 }
 
-/* ══════════════════════════════════════════════
-   COMMENTS SECTION (inside ticket modal left panel)
-   ══════════════════════════════════════════════ */
-
 .comments-section {
     margin-top: 1.75rem;
     border-top: 1px solid #ebecf0;
@@ -1442,7 +1387,6 @@
     margin-bottom: 0.85rem !important;
 }
 
-/* ── Loading ─────────────────────────────────── */
 .comments-loading {
     display: flex;
     align-items: center;
@@ -1463,7 +1407,6 @@
     flex-shrink: 0;
 }
 
-/* ── Empty / viewer note ─────────────────────── */
 .comments-empty {
     font-size: 0.85rem;
     color: #8993a4;
@@ -1481,7 +1424,6 @@
     margin: 0.75rem 0 0;
 }
 
-/* ── Comment list ────────────────────────────── */
 .comments-list {
     list-style: none;
     margin: 0 0 1rem;
@@ -1518,7 +1460,6 @@
     align-items: flex-start;
 }
 
-/* ── Comment avatar ──────────────────────────── */
 .comment-avatar {
     width: 30px;
     height: 30px;
@@ -1541,7 +1482,6 @@
     object-fit: cover;
 }
 
-/* ── Comment body ────────────────────────────── */
 .comment-body {
     flex: 1;
     min-width: 0;
@@ -1581,7 +1521,6 @@
     word-break: break-word;
 }
 
-/* ── Comment actions (edit/delete) ──────────── */
 .comment-actions {
     display: flex;
     gap: 0.4rem;
@@ -1616,7 +1555,6 @@
     color: #de350b;
 }
 
-/* ── Inline edit ─────────────────────────────── */
 .comment-edit-input {
     width: 100%;
     box-sizing: border-box;
@@ -1668,7 +1606,6 @@
 
 .comment-cancel-btn:hover { background: #ebecf0; }
 
-/* ── Add comment form ────────────────────────── */
 .comment-add-wrap {
     display: flex;
     gap: 0.65rem;

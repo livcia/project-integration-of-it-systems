@@ -13,7 +13,6 @@
 <div class="create-board-wrapper">
     <div class="create-board-card">
 
-        <!-- ── Header ── -->
         <div class="create-board-header">
             <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 40 40">
                 <defs>
@@ -38,7 +37,6 @@
             </div>
         </div>
 
-        <!-- ── Status banners ── -->
         @if (saveSuccess)
         {
             <div class="cb-alert-success">
@@ -68,11 +66,9 @@
         }
         else
         {
-            <!-- ── Form ── -->
             <EditForm Model="model" OnValidSubmit="HandleSubmit">
                 <DataAnnotationsValidator />
 
-                <!-- Tytuł -->
                 <div class="cb-form-group">
                     <label class="cb-form-label" for="ticket-name">
                         Tytuł zadania <span class="cb-required">*</span>
@@ -88,7 +84,6 @@
                     }
                 </div>
 
-                <!-- Opis -->
                 <div class="cb-form-group">
                     <label class="cb-form-label" for="ticket-desc">
                         Opis zadania <span class="cb-optional">(opcjonalne)</span>
@@ -99,7 +94,6 @@
                                    placeholder="Opisz szczegółowo, co trzeba zrobić..." />
                 </div>
 
-                <!-- Priorytet + Kolumna -->
                 <div class="cb-form-row">
                     <div class="cb-form-group">
                         <label class="cb-form-label" for="ticket-priority">Priorytet</label>
@@ -120,7 +114,6 @@
                     </div>
                 </div>
 
-                <!-- Przypisane do -->
                 <div class="cb-form-group">
                     <label class="cb-form-label" for="ticket-assignee">Przypisane do</label>
                     <InputSelect id="ticket-assignee" class="cb-input cb-select" @bind-Value="model.IdUzytkownikaPrzypisanego">
@@ -132,7 +125,6 @@
                     </InputSelect>
                 </div>
 
-                <!-- Actions -->
                 <div class="cb-form-actions">
                     <a class="cb-btn-cancel" href="@BackUrl">Anuluj</a>
                     <button type="submit" class="cb-btn-submit" disabled="@isSaving">
@@ -155,11 +147,9 @@
 
 
 @code {
-    // ── Query param ─────────────────────────────────
     [SupplyParameterFromQuery(Name = "boardId")]
     public int? boardId { get; set; }
 
-    // ── State ────────────────────────────────────────
     private TicketFormModel model = new();
     private string? boardName;
     private string BackUrl => boardId.HasValue ? $"/board/{boardId}" : "/projects";
@@ -174,13 +164,11 @@
     private string? savedTaskTitle;
     private bool titleTouched;
 
-    // ── Lifecycle ────────────────────────────────────
     protected override async Task OnInitializedAsync()
     {
         var authState = await AuthStateProvider.GetAuthenticationStateAsync();
         var user = authState.User;
 
-        // Resolve current user id
         var idClaim = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (!int.TryParse(idClaim, out currentUserId) || currentUserId <= 0)
         {
@@ -198,7 +186,6 @@
             using var scope = ScopeFactory.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
-            // Load board name + members for assignee dropdown
             var board = await db.Tablice
                 .Include(t => t.Owner)
                 .Include(t => t.TabliceUzyt).ThenInclude(tu => tu.Uzytkownik)
@@ -208,7 +195,6 @@
             {
                 boardName = board.NazwaTablicy;
 
-                // Owner + all members
                 var users = new List<Uzytkownik>();
                 if (board.Owner != null) users.Add(board.Owner);
                 foreach (var tu in board.TabliceUzyt)
@@ -220,14 +206,12 @@
             }
         }
 
-        // Default form values
         model.Priorytet = "sredni";
         model.KolumnaTablicy = "Todo";
 
         isLoading = false;
     }
 
-    // ── Submit ───────────────────────────────────────
     private async Task HandleSubmit()
     {
         if (string.IsNullOrWhiteSpace(model.TytulZadania))
@@ -264,7 +248,6 @@
             savedTaskTitle = zadanie.TytulZadania;
             saveSuccess = true;
 
-            // Send assignment notification email if an assignee was selected
             if (zadanie.IdUzytkownikaPrzypisanego.HasValue)
             {
                 var assignee = boardUsers.FirstOrDefault(u => u.IdUzytkownika == zadanie.IdUzytkownikaPrzypisanego.Value);
@@ -280,7 +263,6 @@
                 }
             }
 
-            // Small delay so user sees the success message, then redirect
             await Task.Delay(1200);
             NavManager.NavigateTo(BackUrl);
         }
@@ -294,7 +276,6 @@
         }
     }
 
-    // ── Form model ───────────────────────────────────
     private class TicketFormModel
     {
         public string TytulZadania   { get; set; } = "";

@@ -1,7 +1,3 @@
-/* ══════════════════════════════════════════════
-   TicketCard.razor – scoped styles
-   ══════════════════════════════════════════════ */
-
 .ticket-card {
     background: #ffffff;
     border-radius: 10px;
@@ -24,7 +20,6 @@
     box-shadow: 0 0 0 3px rgba(38, 132, 255, 0.35);
 }
 
-/* Dragging state – ghost left behind */
 .ticket-card--dragging {
     opacity: 0.35;
     transform: rotate(1.5deg) scale(0.97);
@@ -32,12 +27,10 @@
     cursor: grabbing;
 }
 
-/* Priority border colors */
 .ticket-card--high   { border-left-color: #de350b; }
 .ticket-card--medium { border-left-color: #ff8b00; }
 .ticket-card--low    { border-left-color: #00875a; }
 
-/* ── Header (id + priority dot) ─────────────── */
 .ticket-card-header {
     display: flex;
     align-items: center;
@@ -45,7 +38,6 @@
     margin-bottom: 0.4rem;
 }
 
-/* Drag handle – subtle icon on the right */
 .ticket-drag-handle {
     margin-left: auto;
     font-size: 0.9rem;
@@ -79,7 +71,6 @@
     letter-spacing: 0.03em;
 }
 
-/* ── Title & description ─────────────────────── */
 .ticket-title {
     margin: 0 0 0.3rem;
     font-size: 0.875rem;
@@ -93,7 +84,6 @@
 }
 
 
-/* ── Footer (badge + age + avatar) ──────────── */
 .ticket-footer {
     display: flex;
     align-items: center;
@@ -147,7 +137,7 @@
     flex-shrink: 0;
     border: 2px solid #fff;
     box-shadow: 0 1px 4px rgba(9, 30, 66, 0.2);
-    overflow: hidden; /* potrzebne żeby img nie wychodził poza okrąg */
+    overflow: hidden;
 }
 
 .ticket-assignee-img {

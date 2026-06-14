@@ -2,9 +2,6 @@ using jira.DbModels;
 
 namespace jira.Tests.Fixtures;
 
-/// <summary>
-/// Helper do tworzenia danych testowych
-/// </summary>
 public class TestDataBuilder
 {
     public static Uzytkownik CreateUser(

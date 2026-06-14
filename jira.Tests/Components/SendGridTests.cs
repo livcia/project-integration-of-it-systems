@@ -28,17 +28,14 @@ public class SendGridTests
     [Fact]
     public async Task SendAssignmentNotificationAsync_LogsError_WhenApiReturnsUnauthorized()
     {
-        // Ustawiamy niepoprawny klucz, co wymusi odpowiedź 401 Unauthorized z serwera SendGrid
         Environment.SetEnvironmentVariable("SENDGRID_API_KEY", "invalid_key");
         Environment.SetEnvironmentVariable("SENDGRID_FROM_EMAIL", "test@test.pl");
 
         await _service.SendAssignmentNotificationAsync("a@a.pl", "U", "T", "B", 1, "D");
 
-        // Weryfikujemy log error, który pojawia się przy kodzie statusu >= 400
         VerifyLog(_loggerMock, LogLevel.Error, "SendGrid returned error status");
     }
 
-    // Pomocnicza metoda, która jest bardziej elastyczna dla logów ILogger
     private static void VerifyLog<T>(Mock<ILogger<T>> logger, LogLevel level, string messagePart)
     {
         logger.Verify(

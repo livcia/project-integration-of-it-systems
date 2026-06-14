@@ -24,9 +24,9 @@ if (File.Exists(envRoot))
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Detect whether the app is running inside a Docker container
 var isInContainer = File.Exists("/.dockerenv")
-    || string.Equals(Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER"), "true", StringComparison.OrdinalIgnoreCase);
+                    || string.Equals(Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER"), "true",
+                        StringComparison.OrdinalIgnoreCase);
 
 var connectionString = ConnectionStringHelper.Build();
 
@@ -44,7 +44,6 @@ builder.Services
         options.Cookie.Name = "jira.auth";
         options.Cookie.HttpOnly = true;
         options.Cookie.SameSite = SameSiteMode.Lax;
-        // In Docker over plain HTTP we must NOT require Secure flag
         options.Cookie.SecurePolicy = isInContainer
             ? CookieSecurePolicy.None
             : CookieSecurePolicy.SameAsRequest;
@@ -93,7 +92,6 @@ builder.Services.AddHttpClient<WeatherService>();
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
-// Allow antiforgery cookie to work over HTTP in Docker
 builder.Services.AddAntiforgery(options =>
 {
     options.Cookie.Name = "jira.af";
@@ -106,7 +104,6 @@ builder.Services.AddAntiforgery(options =>
 builder.Services.AddControllers();
 builder.Services.AddHealthChecks();
 
-// Configure ForwardedHeaders so the app respects X-Forwarded-Proto from proxies
 builder.Services.Configure<ForwardedHeadersOptions>(options =>
 {
     options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
@@ -118,7 +115,6 @@ var app = builder.Build();
 
 await ApplyMigrationsAsync(app);
 
-// Must be first in pipeline to correctly interpret forwarded headers from proxies
 app.UseForwardedHeaders();
 
 if (!app.Environment.IsDevelopment())
@@ -135,6 +131,7 @@ if (!isInContainer)
 {
     app.UseHttpsRedirection();
 }
+
 app.UseStaticFiles();
 app.UseAuthentication();
 app.UseAuthorization();
@@ -169,29 +166,27 @@ app.MapGet("/api/auth/callback", async (
     var claims = principal.Claims.ToDictionary(c => c.Type, c => c.Value);
 
     var email = claims.GetValueOrDefault("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress")
-             ?? claims.GetValueOrDefault("email")
-             ?? claims.GetValueOrDefault("urn:github:email");
+                ?? claims.GetValueOrDefault("email")
+                ?? claims.GetValueOrDefault("urn:github:email");
 
     if (string.IsNullOrWhiteSpace(email))
         return Results.Redirect("/login?error=no_email");
 
     var name = claims.GetValueOrDefault("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name")
-            ?? claims.GetValueOrDefault("name")
-            ?? email.Split('@')[0];
+               ?? claims.GetValueOrDefault("name")
+               ?? email.Split('@')[0];
 
     var avatar = claims.GetValueOrDefault("urn:github:avatar_url")
-              ?? claims.GetValueOrDefault("picture")
-              ?? claims.GetValueOrDefault("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/uri");
+                 ?? claims.GetValueOrDefault("picture")
+                 ?? claims.GetValueOrDefault("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/uri");
 
     var externalId = claims.GetValueOrDefault("http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier")
-                  ?? claims.GetValueOrDefault("sub")
-                  ?? claims.GetValueOrDefault("urn:github:id");
+                     ?? claims.GetValueOrDefault("sub")
+                     ?? claims.GetValueOrDefault("urn:github:id");
 
-    // Upsert user in DB
     var user = await db.Uzytkownicy.FirstOrDefaultAsync(u => u.Email == email);
     if (user is null)
     {
-        // Jeśli OAuth nie dostarczył avatara, wygeneruj z Dicebear API na podstawie imienia
         var avatarUrl = !string.IsNullOrEmpty(avatar)
             ? avatar
             : $"https://api.dicebear.com/10.x/lorelei/svg?seed={Uri.EscapeDataString(name)}";
@@ -215,7 +210,6 @@ app.MapGet("/api/auth/callback", async (
         }
         else if (string.IsNullOrEmpty(user.AvatarUrl))
         {
-            // Uzupełnij brakujący avatar dla istniejącego użytkownika
             user.AvatarUrl = $"https://api.dicebear.com/10.x/lorelei/svg?seed={Uri.EscapeDataString(name)}";
         }
     }
@@ -271,4 +265,6 @@ static async Task ApplyMigrationsAsync(WebApplication app)
 }
 
 [ExcludeFromCodeCoverage]
-public partial class Program { }
+public partial class Program
+{
+}
