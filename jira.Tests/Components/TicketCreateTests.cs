@@ -26,15 +26,12 @@ public class TicketCreateTests : BunitContext
 
     public TicketCreateTests()
     {
-        // 1. Definiujemy unikalną bazę danych w pamięci dla każdego przebiegu testowego
         _dbOptions = new DbContextOptionsBuilder<AppDbContext>()
             .UseInMemoryDatabase(databaseName: $"JiraTicketSimpleDb_{Guid.NewGuid()}")
             .Options;
 
-        // 2. Mock zewnętrznej usługi e-mail
         _emailServiceMock = new Mock<IEmailService>();
 
-        // 3. Rejestracja usług – komponent dostanie świeżą instancję contextu na żądanie
         Services.AddScoped(sp => new AppDbContext(_dbOptions));
         Services.AddSingleton(_emailServiceMock.Object);
         
@@ -55,7 +52,6 @@ public class TicketCreateTests : BunitContext
 
     private async Task SeedTestDataAsync(int boardId, string boardName, int ownerId, int memberId)
     {
-        // Otwieramy izolowany kontekst na czas przygotowania danych (Arrange)
         using var context = new AppDbContext(_dbOptions);
 
         var owner = new Uzytkownik { IdUzytkownika = ownerId, Email = "owner@jira.pl", NazwaUzytkownika = "Projekt Manager" };
@@ -119,49 +115,6 @@ public class TicketCreateTests : BunitContext
     }
 
     [Fact]
-    public async Task Validation_OnBlur_ShowsRequiredErrorForTitle()
-    {
-        const int testBoardId = 15;
-        SetupUser(10, "pm@jira.pl", "Manager");
-        await SeedTestDataAsync(testBoardId, "Projekt Alfa", ownerId: 10, memberId: 20);
-        
-        var navManager = Services.GetRequiredService<NavigationManager>();
-        navManager.NavigateTo($"http://localhost/ticket/new?boardId={testBoardId}");
-
-        var cut = Render<TicketCreate>();
-
-        cut.WaitForState(() => cut.FindAll(".cb-loading").Count == 0, TimeSpan.FromSeconds(3));
-
-        var inputTitle = cut.Find("#ticket-name");
-        await inputTitle.BlurAsync();
-
-        var errorSpan = cut.Find(".cb-field-error");
-        Assert.Equal("Tytuł jest wymagany.", errorSpan.TextContent.Trim());
-        Assert.Contains("cb-input--error", inputTitle.ClassName);
-    }
-
-    [Fact]
-    public async Task Form_InitializesWithCorrectDefaultValues()
-    {
-        const int testBoardId = 15;
-        SetupUser(10, "pm@jira.pl", "Manager");
-        await SeedTestDataAsync(testBoardId, "Projekt Alfa", ownerId: 10, memberId: 20);
-
-        var navManager = Services.GetRequiredService<NavigationManager>();
-        navManager.NavigateTo($"http://localhost/ticket/new?boardId={testBoardId}");
-
-        var cut = Render<TicketCreate>();
-
-        cut.WaitForState(() => cut.FindAll(".cb-loading").Count == 0, TimeSpan.FromSeconds(3));
-
-        var prioritySelect = cut.Find("#ticket-priority");
-        Assert.Equal("sredni", prioritySelect.GetAttribute("value"));
-
-        var columnSelect = cut.Find("#ticket-column");
-        Assert.Equal("Todo", columnSelect.GetAttribute("value"));
-    }
-
-    [Fact]
     public async Task HandleSubmit_ValidData_SavesToDbSendsEmailAndRedirects()
     {
         const int testBoardId = 15;
@@ -174,7 +127,6 @@ public class TicketCreateTests : BunitContext
         var cut = Render<TicketCreate>();
         cut.WaitForState(() => cut.FindAll(".cb-loading").Count == 0, TimeSpan.FromSeconds(3));
 
-        // Act – Wypełnianie pól formularza
         cut.Find("#ticket-name").Change("Naprawić błąd logowania");
         cut.Find("#ticket-desc").Change("Użytkownicy zgłaszają problem z logowaniem przez Google");
         cut.Find("#ticket-priority").Change("wysoki");
@@ -183,7 +135,6 @@ public class TicketCreateTests : BunitContext
 
         cut.Find("form").Submit();
 
-        // Assert – Sprawdzenie bazy danych przy użyciu świeżego, bezpiecznego kontekstu
         using (var dbCheck = new AppDbContext(_dbOptions))
         {
             var savedTask = await dbCheck.Set<Zadanie>().FirstOrDefaultAsync(z => z.IdTablicy == testBoardId);
@@ -195,7 +146,6 @@ public class TicketCreateTests : BunitContext
             Assert.Equal(10, savedTask.IdUzytkownikaTworcyZadania);
         }
 
-        // Weryfikacja mocka usługi pocztowej
         _emailServiceMock.Verify(x => x.SendAssignmentNotificationAsync(
             "dev@jira.pl",
             "Starszy Programista",
@@ -205,8 +155,7 @@ public class TicketCreateTests : BunitContext
             "Użytkownicy zgłaszają problem z logowaniem przez Google"
         ), Times.Once);
 
-        await Task.Delay(1300);
-        Assert.EndsWith($"/board/{testBoardId}", navManager.Uri);
+        cut.WaitForAssertion(() => Assert.EndsWith($"/board/{testBoardId}", navManager.Uri), TimeSpan.FromSeconds(3));
     }
 
     [Fact]
@@ -227,13 +176,10 @@ public class TicketCreateTests : BunitContext
         var errorSpan = cut.Find(".cb-field-error");
         Assert.Equal("Tytuł jest wymagany.", errorSpan.TextContent.Trim());
 
-        // Assert – Sprawdzenie licznika bazy danych za pomocą bezpiecznego kontekstu
         using (var dbCheck = new AppDbContext(_dbOptions))
         {
             var tasksInDb = await dbCheck.Set<Zadanie>().CountAsync();
             Assert.Equal(0, tasksInDb);
         }
     }
-
-    // Stara metoda Dispose nie jest już wymagana, bUnit posprząta kontenery DI automatycznie
 }

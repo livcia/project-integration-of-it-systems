@@ -13,7 +13,6 @@ public class WeatherServiceTests
     [Fact]
     public async Task GetCurrentWeatherAsync_SuccessfulResponse_ReturnsCurrentWeather()
     {
-        // Arrange
         var expectedResponse = new OpenMeteoResponse
         {
             Current = new CurrentWeather
@@ -47,10 +46,8 @@ public class WeatherServiceTests
         var httpClient = new HttpClient(handlerMock.Object);
         var weatherService = new WeatherService(httpClient);
 
-        // Act
         var result = await weatherService.GetCurrentWeatherAsync();
 
-        // Assert
         Assert.NotNull(result);
         Assert.Equal(expectedResponse.Current.Temperature, result.Temperature);
         Assert.Equal(expectedResponse.Current.WeatherCode, result.WeatherCode);
@@ -68,7 +65,6 @@ public class WeatherServiceTests
     [Fact]
     public async Task GetCurrentWeatherAsync_HttpErrorResponse_ReturnsNull()
     {
-        // Arrange
         var handlerMock = new Mock<HttpMessageHandler>(MockBehavior.Strict);
         handlerMock
             .Protected()
@@ -86,10 +82,8 @@ public class WeatherServiceTests
         var httpClient = new HttpClient(handlerMock.Object);
         var weatherService = new WeatherService(httpClient);
 
-        // Act
         var result = await weatherService.GetCurrentWeatherAsync();
 
-        // Assert
         Assert.Null(result);
 
         handlerMock.Protected().Verify(
@@ -103,7 +97,6 @@ public class WeatherServiceTests
     [Fact]
     public async Task GetCurrentWeatherAsync_ExceptionThrown_ReturnsNull()
     {
-        // Arrange
         var handlerMock = new Mock<HttpMessageHandler>(MockBehavior.Strict);
         handlerMock
             .Protected()
@@ -118,10 +111,8 @@ public class WeatherServiceTests
         var httpClient = new HttpClient(handlerMock.Object);
         var weatherService = new WeatherService(httpClient);
 
-        // Act
         var result = await weatherService.GetCurrentWeatherAsync();
 
-        // Assert
         Assert.Null(result);
 
         handlerMock.Protected().Verify(
@@ -140,10 +131,8 @@ public class WeatherServiceTests
     [InlineData(999, "Nieznana pogoda", "🌡️")]
     public void GetWeatherDescription_ReturnsExpectedDescriptionAndEmoji(int code, string expectedDescription, string expectedEmoji)
     {
-        // Act
         var (description, emoji) = WeatherService.GetWeatherDescription(code);
 
-        // Assert
         Assert.Equal(expectedDescription, description);
         Assert.Equal(expectedEmoji, emoji);
     }

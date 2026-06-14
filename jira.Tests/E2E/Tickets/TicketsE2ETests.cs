@@ -5,9 +5,6 @@ using Microsoft.EntityFrameworkCore;
 
 namespace jira.Tests.E2E.Tickets;
 
-/// <summary>
-/// E2E testy dla zarządzania zadaniami/ticketami
-/// </summary>
 public class TicketsE2ETests : IDisposable
 {
     private readonly TestDatabaseFixture _fixture;
@@ -130,7 +127,6 @@ public class TicketsE2ETests : IDisposable
     [Fact]
     public async Task CreateTicket_Should_SavePriorityAndAssignee()
     {
-        // Arrange
         using var db = _fixture.CreateDbContext();
         var creator = TestDataBuilder.CreateUser(id: 1, username: "creator");
         var assignee = TestDataBuilder.CreateUser(id: 2, email: "assignee@example.com", username: "assignee");
@@ -139,9 +135,7 @@ public class TicketsE2ETests : IDisposable
         db.Tablice.Add(board);
         await db.SaveChangesAsync();
 
-        // Act - symulacja HandleSubmit z TicketCreate.razor
-        // IdUzytkownikaPrzypisanego > 0 => zapisujemy, inaczej null
-        int assigneeId = assignee.IdUzytkownika; // > 0
+        int assigneeId = assignee.IdUzytkownika;
         var zadanie = new Zadanie
         {
             TytulZadania               = "Zadanie do wykonania",
@@ -157,7 +151,6 @@ public class TicketsE2ETests : IDisposable
         db.Zadania.Add(zadanie);
         await db.SaveChangesAsync();
 
-        // Assert
         var saved = await db.Zadania
             .Include(t => t.UzytkownikPrzypisany)
             .FirstAsync(t => t.TytulZadania == "Zadanie do wykonania");
@@ -169,7 +162,6 @@ public class TicketsE2ETests : IDisposable
     [Fact]
     public async Task CreateTicket_WithoutAssignee_ShouldHaveNullAssigneeId()
     {
-        // Arrange
         using var db = _fixture.CreateDbContext();
         var creator = TestDataBuilder.CreateUser();
         db.Uzytkownicy.Add(creator);
@@ -177,9 +169,7 @@ public class TicketsE2ETests : IDisposable
         db.Tablice.Add(board);
         await db.SaveChangesAsync();
 
-        // Act - symulacja HandleSubmit z TicketCreate.razor, gdy
-        // model.IdUzytkownikaPrzypisanego == 0 (domyślna wartość pola int)
-        int rawAssigneeId = 0; // "— Nieprzypisane —" wybrane w formularzu
+        int rawAssigneeId = 0;
         var zadanie = new Zadanie
         {
             TytulZadania               = "Zadanie bez przypisania",
@@ -194,7 +184,6 @@ public class TicketsE2ETests : IDisposable
         db.Zadania.Add(zadanie);
         await db.SaveChangesAsync();
 
-        // Assert
         var saved = await db.Zadania
             .FirstAsync(t => t.TytulZadania == "Zadanie bez przypisania");
         Assert.Null(saved.IdUzytkownikaPrzypisanego);
@@ -203,7 +192,6 @@ public class TicketsE2ETests : IDisposable
     [Fact]
     public async Task CreateTicket_WithDescription_ShouldPersistDescription()
     {
-        // Arrange
         using var db = _fixture.CreateDbContext();
         var creator = TestDataBuilder.CreateUser();
         db.Uzytkownicy.Add(creator);
@@ -211,7 +199,6 @@ public class TicketsE2ETests : IDisposable
         db.Tablice.Add(board);
         await db.SaveChangesAsync();
 
-        // Act - symulacja HandleSubmit z TicketCreate.razor z opisem
         const string description = "Szczegółowy opis zadania do wykonania przez twórcę.";
         var zadanie = new Zadanie
         {
@@ -228,7 +215,6 @@ public class TicketsE2ETests : IDisposable
         db.Zadania.Add(zadanie);
         await db.SaveChangesAsync();
 
-        // Assert
         var saved = await db.Zadania
             .FirstAsync(t => t.TytulZadania == "Zadanie z opisem");
         Assert.Equal(description.Trim(), saved.OpisZadania);
